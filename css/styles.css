@@ -102,7 +102,9 @@ p { margin: 0 0 1.1em; }
   border-bottom: 1px solid var(--line);
 }
 .nav { display: flex; align-items: center; justify-content: space-between; height: 74px; }
-.nav__logo img { height: 46px; }
+.nav__logo { display:flex; align-items:center; }
+.nav__logo img { height: 50px; width:50px; border-radius: 13px; background:#fff; box-shadow: 0 2px 8px rgba(26,21,18,.12); }
+.footer-logo { height: 92px; width: 92px; border-radius: 18px; background:#fff; padding:7px; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 .nav__links { display: flex; gap: 6px; align-items: center; list-style: none; margin: 0; padding: 0; }
 .nav__links a {
   color: var(--ink); font-weight: 600; padding: 9px 14px; border-radius: 999px;
@@ -145,6 +147,10 @@ p { margin: 0 0 1.1em; }
   border:3px dashed rgba(255,255,255,.55);
 }
 .hero__art .oven-emoji { font-size: clamp(90px, 16vw, 170px); filter: drop-shadow(0 12px 18px rgba(0,0,0,.25)); }
+/* Logo real dentro del hero: tarjeta blanca limpia */
+.hero__art:has(.hero__logo) { background:#fff; border-radius: 30px; }
+.hero__art:has(.hero__logo)::after { border-color: rgba(200,52,43,.18); border-radius: 22px; inset: 12px; }
+.hero__logo { width: 84%; height: auto; }
 
 /* ---------- Franja de marquesina ---------- */
 .strip { background: var(--tomato); color: var(--cream); padding: 16px 0; overflow:hidden; }
