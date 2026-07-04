@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Contacto — Pide tu presupuesto | PizzPlass</title>
+  <meta name="description" content="¿Tienes un evento? Contacta con PizzPlass y pide tu presupuesto sin compromiso. Leo y Juan Antonio llevarán el horno napolitano a tu celebración." />
+  <link rel="icon" href="assets/logo.svg" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <script>document.documentElement.classList.add("js");</script>
+</head>
+<body>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a class="nav__logo" href="index.html"><img src="assets/logo.svg" alt="PizzPlass" /></a>
+      <button class="nav__toggle" aria-label="Abrir menú" aria-expanded="false"><span></span><span></span><span></span></button>
+      <ul class="nav__links">
+        <li><a href="index.html">Inicio</a></li>
+        <li><a href="nosotros.html">Nosotros</a></li>
+        <li><a href="eventos.html">Eventos</a></li>
+        <li><a href="blog.html">Blog</a></li>
+        <li><a href="contacto.html" class="btn btn--primary">Pide presupuesto</a></li>
+      </ul>
+    </div>
+  </header>
+
+  <section class="page-head">
+    <div class="container">
+      <span class="eyebrow">Hablemos</span>
+      <h1>Pide tu presupuesto</h1>
+      <p>Cuéntanos cómo es tu evento y te preparamos una propuesta a medida, sin compromiso. Normalmente respondemos en menos de 24&nbsp;horas.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container contact-grid">
+      <div class="reveal">
+        <h2>Estamos a un mensaje</h2>
+        <p>Escríbenos por el canal que prefieras o rellena el formulario. Leo y Juan Antonio estarán encantados de ayudarte a planear tu celebración.</p>
+        <ul class="info-list" style="margin-top:24px;">
+          <li><span class="ic">📷</span><div><div class="k">Instagram</div><div class="v"><a href="https://www.instagram.com/pizzplass" target="_blank" rel="noopener">@pizzplass</a></div></div></li>
+          <li><span class="ic">✉️</span><div><div class="k">Email</div><div class="v"><a href="mailto:hola@pizzplass.es">hola@pizzplass.es</a></div></div></li>
+          <li><span class="ic">📞</span><div><div class="k">Teléfono / WhatsApp</div><div class="v"><a href="tel:+34600000000">600 00 00 00</a></div></div></li>
+          <li><span class="ic">📍</span><div><div class="k">Zona de servicio</div><div class="v">Eventos a domicilio. Consúltanos tu localidad.</div></div></li>
+        </ul>
+        <div class="card" style="margin-top:20px; background:var(--cream-2);">
+          <h3 style="margin-bottom:.3em;">💡 Consejo</h3>
+          <p style="margin:0;">Para afinar el presupuesto, indícanos la <strong>fecha</strong>, el <strong>número de invitados</strong> y el <strong>lugar</strong> del evento. ¡Cuanto más nos cuentes, mejor!</p>
+        </div>
+      </div>
+
+      <form class="form reveal" novalidate>
+        <div class="field">
+          <label for="nombre">Nombre y apellidos</label>
+          <input type="text" id="nombre" name="nombre" placeholder="Tu nombre" required />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="tucorreo@ejemplo.com" required />
+        </div>
+        <div class="field">
+          <label for="telefono">Teléfono</label>
+          <input type="tel" id="telefono" name="telefono" placeholder="600 00 00 00" />
+        </div>
+        <div class="field">
+          <label for="tipo">Tipo de evento</label>
+          <select id="tipo" name="tipo">
+            <option value="">Selecciona una opción</option>
+            <option>Boda</option>
+            <option>Comunión</option>
+            <option>Cumpleaños</option>
+            <option>Evento de empresa</option>
+            <option>Otra celebración</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="fecha">Fecha del evento</label>
+          <input type="date" id="fecha" name="fecha" />
+        </div>
+        <div class="field">
+          <label for="invitados">Número aproximado de invitados</label>
+          <input type="number" id="invitados" name="invitados" min="1" placeholder="Ej. 80" />
+        </div>
+        <div class="field">
+          <label for="mensaje">Cuéntanos más</label>
+          <textarea id="mensaje" name="mensaje" placeholder="Lugar del evento, ideas, dudas..."></textarea>
+        </div>
+        <button type="submit" class="btn btn--primary" style="width:100%;">Enviar solicitud</button>
+        <div class="form__ok" role="status"></div>
+        <p class="form__note">Al enviar aceptas que contactemos contigo para gestionar tu solicitud. No compartimos tus datos con terceros.</p>
+      </form>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <img src="assets/logo.svg" alt="PizzPlass" style="height:52px; filter:brightness(0) invert(1);" />
+          <p style="margin-top:14px;">Pizza napolitana artesanal para eventos. El horno de leña de Leo y Juan Antonio, en tu celebración.</p>
+          <div class="social">
+            <a href="https://www.instagram.com/pizzplass" target="_blank" rel="noopener" aria-label="Instagram">📷</a>
+            <a href="contacto.html" aria-label="Contacto">✉️</a>
+            <a href="https://wa.me/34600000000" target="_blank" rel="noopener" aria-label="WhatsApp">💬</a>
+          </div>
+        </div>
+        <div><h4>Menú</h4><ul>
+          <li><a href="index.html">Inicio</a></li>
+          <li><a href="nosotros.html">Nosotros</a></li>
+          <li><a href="eventos.html">Eventos</a></li>
+          <li><a href="blog.html">Blog</a></li>
+        </ul></div>
+        <div><h4>Eventos</h4><ul>
+          <li><a href="eventos.html">Bodas</a></li>
+          <li><a href="eventos.html">Comuniones</a></li>
+          <li><a href="eventos.html">Cumpleaños</a></li>
+          <li><a href="eventos.html">Empresa</a></li>
+        </ul></div>
+        <div><h4>Contacto</h4><ul>
+          <li>📷 <a href="https://www.instagram.com/pizzplass" target="_blank" rel="noopener">@pizzplass</a></li>
+          <li>✉️ <a href="mailto:hola@pizzplass.es">hola@pizzplass.es</a></li>
+          <li>📞 <a href="tel:+34600000000">600 00 00 00</a></li>
+        </ul></div>
+      </div>
+      <div class="footer-bottom">© <span data-year></span> PizzPlass · Pizza napolitana para eventos. Hecho con 🍕 e ilusión.</div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

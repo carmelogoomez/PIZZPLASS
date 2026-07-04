@@ -1,0 +1,22 @@
+<svg width="240" height="72" viewBox="0 0 240 72" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="PizzPlass">
+  <!-- Pizza slice emblem -->
+  <g transform="translate(6 6)">
+    <circle cx="30" cy="30" r="30" fill="#C8342B"/>
+    <path d="M30 4 A26 26 0 0 1 56 30 L30 30 Z" fill="#E9A23B"/>
+    <path d="M30 4 A26 26 0 0 0 4 30 L30 30 Z" fill="#F2C14E"/>
+    <path d="M30 30 L4 30 A26 26 0 0 0 30 56 Z" fill="#E9A23B"/>
+    <path d="M30 30 L56 30 A26 26 0 0 1 30 56 Z" fill="#F2C14E"/>
+    <!-- Toppings -->
+    <circle cx="22" cy="18" r="3.2" fill="#C8342B"/>
+    <circle cx="40" cy="20" r="3.2" fill="#C8342B"/>
+    <circle cx="18" cy="38" r="3.2" fill="#C8342B"/>
+    <circle cx="42" cy="40" r="3.2" fill="#C8342B"/>
+    <circle cx="30" cy="44" r="3.2" fill="#C8342B"/>
+    <!-- Basil -->
+    <path d="M31 26 q4 -3 7 0 q-4 3 -7 0Z" fill="#2A9D4A"/>
+    <path d="M20 28 q3 -2.5 6 0 q-3 2.5 -6 0Z" fill="#2A9D4A"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="74" y="34" font-family="Georgia, 'Times New Roman', serif" font-weight="700" font-size="27" fill="#1A1512">Pizz<tspan fill="#C8342B">Plass</tspan></text>
+  <text x="75" y="52" font-family="Georgia, serif" font-size="10.5" letter-spacing="3.2" fill="#8A7A6B">PIZZA NAPOLETANA · EVENTOS</text>
+</svg>
