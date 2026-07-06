@@ -41,7 +41,7 @@
         <p>Escríbenos por el canal que prefieras o rellena el formulario. Leo y Juan Antonio estarán encantados de ayudarte a planear tu celebración.</p>
         <ul class="info-list" style="margin-top:24px;">
           <li><span class="ic">📷</span><div><div class="k">Instagram</div><div class="v"><a href="https://www.instagram.com/pizzplass_pizzas" target="_blank" rel="noopener">@pizzplass_pizzas</a></div></div></li>
-          <li><span class="ic">✉️</span><div><div class="k">Email</div><div class="v"><a href="mailto:hola@pizzplass.es">hola@pizzplass.es</a></div></div></li>
+          <li><span class="ic">✉️</span><div><div class="k">Email</div><div class="v"><a href="mailto:carmelogoomez00@gmail.com">carmelogoomez00@gmail.com</a></div></div></li>
           <li><span class="ic">📞</span><div><div class="k">Teléfono / WhatsApp</div><div class="v"><a href="tel:+34675264967">675 26 49 67</a></div></div></li>
           <li><span class="ic">🏠</span><div><div class="k">Obrador</div><div class="v">C. Cortinales, 8 · 41928 Palomares del Río (Sevilla)</div></div></li>
           <li><span class="ic">📍</span><div><div class="k">Zona de servicio</div><div class="v">Eventos por toda Andalucía y comunidades limítrofes.</div></div></li>
@@ -52,7 +52,14 @@
         </div>
       </div>
 
-      <form class="form reveal" novalidate>
+      <form class="form reveal" action="https://formsubmit.co/carmelogoomez00@gmail.com" method="POST">
+        <!-- Envío por email vía FormSubmit (sin backend). El correo es temporal para pruebas. -->
+        <input type="hidden" name="_subject" value="Nueva solicitud de presupuesto — PizzPlass" />
+        <input type="hidden" name="_template" value="table" />
+        <input type="hidden" name="_captcha" value="false" />
+        <input type="hidden" name="_next" value="https://pizzplass.es/contacto.html?enviado=1" />
+        <!-- Trampa antispam: debe quedar siempre vacío -->
+        <input type="text" name="_honey" style="display:none" tabindex="-1" autocomplete="off" />
         <div class="field">
           <label for="nombre">Nombre y apellidos</label>
           <input type="text" id="nombre" name="nombre" placeholder="Tu nombre" required />
@@ -88,7 +95,9 @@
           <label for="mensaje">Cuéntanos más</label>
           <textarea id="mensaje" name="mensaje" placeholder="Lugar del evento, ideas, dudas..."></textarea>
         </div>
-        <button type="submit" class="btn btn--primary" style="width:100%;">Enviar solicitud</button>
+        <button type="submit" class="btn btn--primary" style="width:100%;">Enviar solicitud por email</button>
+        <div style="text-align:center; color:var(--muted); margin:12px 0; font-size:.9rem;">— o —</div>
+        <button type="button" class="btn btn--ghost js-wsp" style="width:100%;">💬 Enviar por WhatsApp</button>
         <div class="form__ok" role="status"></div>
         <p class="form__note">Al enviar aceptas que contactemos contigo para gestionar tu solicitud. No compartimos tus datos con terceros.</p>
       </form>
@@ -121,7 +130,7 @@
         </ul></div>
         <div><h4>Contacto</h4><ul>
           <li>📷 <a href="https://www.instagram.com/pizzplass_pizzas" target="_blank" rel="noopener">@pizzplass_pizzas</a></li>
-          <li>✉️ <a href="mailto:hola@pizzplass.es">hola@pizzplass.es</a></li>
+          <li>✉️ <a href="mailto:carmelogoomez00@gmail.com">carmelogoomez00@gmail.com</a></li>
           <li>📞 <a href="tel:+34675264967">675 26 49 67</a></li>
         </ul></div>
       </div>
