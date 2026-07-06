@@ -40,9 +40,10 @@
         <h2>Estamos a un mensaje</h2>
         <p>Escríbenos por el canal que prefieras o rellena el formulario. Leo y Juan Antonio estarán encantados de ayudarte a planear tu celebración.</p>
         <ul class="info-list" style="margin-top:24px;">
-          <li><span class="ic">📷</span><div><div class="k">Instagram</div><div class="v"><a href="https://www.instagram.com/pizzplass_pizzas" target="_blank" rel="noopener">@pizzplass_pizzas</a></div></div></li>
+          <li><span class="ic">@</span><div><div class="k">Instagram</div><div class="v"><a href="https://www.instagram.com/pizzplass_pizzas" target="_blank" rel="noopener">@pizzplass_pizzas</a></div></div></li>
+          <li><span class="ic">@</span><div><div class="k">TikTok</div><div class="v"><a href="https://www.tiktok.com/@pizzplass.pizzas" target="_blank" rel="noopener">pizzplass.pizzas</a></div></div></li>
           <li><span class="ic">✉️</span><div><div class="k">Email</div><div class="v"><a href="mailto:carmelogoomez00@gmail.com">carmelogoomez00@gmail.com</a></div></div></li>
-          <li><span class="ic">📞</span><div><div class="k">Teléfono / WhatsApp</div><div class="v"><a href="tel:+34675264967">675 26 49 67</a></div></div></li>
+          <li><span class="ic">💬</span><div><div class="k">WhatsApp</div><div class="v"><a href="https://wa.me/34675264967" target="_blank" rel="noopener">675 26 49 67</a></div></div></li>
           <li><span class="ic">🏠</span><div><div class="k">Obrador</div><div class="v">C. Cortinales, 8 · 41928 Palomares del Río (Sevilla)</div></div></li>
           <li><span class="ic">📍</span><div><div class="k">Zona de servicio</div><div class="v">Eventos por toda Andalucía y comunidades limítrofes.</div></div></li>
         </ul>
@@ -70,11 +71,11 @@
         </div>
         <div class="field">
           <label for="telefono">Teléfono</label>
-          <input type="tel" id="telefono" name="telefono" placeholder="675 26 49 67" />
+          <input type="tel" id="telefono" name="telefono" placeholder="675 26 49 67" required />
         </div>
         <div class="field">
           <label for="tipo">Tipo de evento</label>
-          <select id="tipo" name="tipo">
+          <select id="tipo" name="tipo" required>
             <option value="">Selecciona una opción</option>
             <option>Boda</option>
             <option>Comunión</option>
@@ -85,15 +86,73 @@
         </div>
         <div class="field">
           <label for="fecha">Fecha del evento</label>
-          <input type="date" id="fecha" name="fecha" />
+          <input type="date" id="fecha" name="fecha" required />
+        </div>
+        <div class="field">
+          <label for="provincia">Provincia</label>
+          <select id="provincia" name="provincia" required>
+            <option value="">Selecciona tu provincia</option>
+            <option>Álava</option>
+            <option>Albacete</option>
+            <option>Alicante</option>
+            <option>Almería</option>
+            <option>Asturias</option>
+            <option>Ávila</option>
+            <option>Badajoz</option>
+            <option>Barcelona</option>
+            <option>Bizkaia</option>
+            <option>Burgos</option>
+            <option>Cáceres</option>
+            <option>Cádiz</option>
+            <option>Cantabria</option>
+            <option>Castellón</option>
+            <option>Ciudad Real</option>
+            <option>Córdoba</option>
+            <option>A Coruña</option>
+            <option>Cuenca</option>
+            <option>Gipuzkoa</option>
+            <option>Girona</option>
+            <option>Granada</option>
+            <option>Guadalajara</option>
+            <option>Huelva</option>
+            <option>Huesca</option>
+            <option>Illes Balears</option>
+            <option>Jaén</option>
+            <option>La Rioja</option>
+            <option>Las Palmas</option>
+            <option>León</option>
+            <option>Lleida</option>
+            <option>Lugo</option>
+            <option>Madrid</option>
+            <option>Málaga</option>
+            <option>Murcia</option>
+            <option>Navarra</option>
+            <option>Ourense</option>
+            <option>Palencia</option>
+            <option>Pontevedra</option>
+            <option>Salamanca</option>
+            <option>Santa Cruz de Tenerife</option>
+            <option>Segovia</option>
+            <option>Sevilla</option>
+            <option>Soria</option>
+            <option>Tarragona</option>
+            <option>Teruel</option>
+            <option>Toledo</option>
+            <option>Valencia</option>
+            <option>Valladolid</option>
+            <option>Zamora</option>
+            <option>Zaragoza</option>
+            <option>Ceuta</option>
+            <option>Melilla</option>
+          </select>
         </div>
         <div class="field">
           <label for="invitados">Número aproximado de invitados</label>
-          <input type="number" id="invitados" name="invitados" min="1" placeholder="Ej. 80" />
+          <input type="number" id="invitados" name="invitados" min="1" placeholder="Ej. 80" required />
         </div>
         <div class="field">
           <label for="mensaje">Cuéntanos más</label>
-          <textarea id="mensaje" name="mensaje" placeholder="Lugar del evento, ideas, dudas..."></textarea>
+          <textarea id="mensaje" name="mensaje" placeholder="Lugar exacto del evento, ideas, dudas" required></textarea>
         </div>
         <button type="submit" class="btn btn--primary" style="width:100%;">Enviar solicitud por email</button>
         <div style="text-align:center; color:var(--muted); margin:12px 0; font-size:.9rem;">— o —</div>

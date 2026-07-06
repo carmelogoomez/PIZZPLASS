@@ -64,6 +64,13 @@
     };
     var firstName = function (v) { return v ? v.trim().split(' ')[0] : ''; };
 
+    // ENTER no debe enviar el formulario (salvo salto de línea en "Cuéntanos más")
+    form.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && e.target && e.target.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+      }
+    });
+
     // Texto del mensaje a partir de los campos rellenados
     function buildMessage() {
       var campos = [
@@ -72,6 +79,7 @@
         ['Teléfono', val('telefono')],
         ['Tipo de evento', val('tipo')],
         ['Fecha', val('fecha')],
+        ['Provincia', val('provincia')],
         ['Invitados', val('invitados')],
         ['Mensaje', val('mensaje')]
       ];
@@ -105,7 +113,7 @@
       var nombre = val('nombre');
       var email = val('email');
       if (!nombre || !email) {
-        showMsg('Por favor, indícanos al menos tu nombre y tu email. 🙏', true);
+        showMsg('Por favor, rellena todos los campos del formulario. 🙏', true);
         return;
       }
 
