@@ -103,6 +103,8 @@
       wspBtn.addEventListener('click', function () {
         var url = 'https://wa.me/' + WSP_NUMBER + '?text=' + encodeURIComponent(buildMessage());
         window.open(url, '_blank', 'noopener');
+        form.reset();
+        showMsg('Te hemos abierto WhatsApp con tus datos. Si no se abre, escríbenos al 675 26 49 67. 💬');
       });
     }
 
@@ -136,7 +138,7 @@
           form.reset();
         })
         .catch(function () {
-          showMsg('Ups, no hemos podido enviar el formulario. Prueba con el botón de WhatsApp y te atendemos al momento. 💬', true);
+          showMsg('Ups, no hemos podido enviar el formulario. Prueba con el botón de WhatsApp y te atendemos al momento. 💬');
         })
         .then(function () {
           if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = btnText; }
