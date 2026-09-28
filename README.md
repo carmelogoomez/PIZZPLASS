@@ -1,59 +1,53 @@
-# PizzPlass — Blog & web informativa 🍕
+# PizzPlass
 
-Sitio web informativo tipo blog para **PizzPlass**, empresa de **pizza napolitana para eventos** (bodas, comuniones, cumpleaños, eventos de empresa…), fundada por los hermanos **Leo y Juan Antonio**, pizzaiolos napolitanos.
+Web de PizzPlass, catering de pizza napolitana elaborada al momento para bodas, comuniones, cumpleaños, deporte, ferias y eventos de empresa.
 
-## ¿Qué incluye?
+## Tecnología
 
-Sitio **estático** (HTML + CSS + JavaScript, sin dependencias ni build). Se abre directamente en el navegador.
+- React 19 + Vite.
+- Una sola aplicación para portada, servicios, nosotros, blog, artículos y contacto.
+- Se conservan las URLs históricas terminadas en `.html` para no romper SEO ni enlaces existentes.
+- Formulario conectado con FormSubmit.
+- Feed de Instagram y reseñas de Google preparados mediante GitHub Actions y secretos privados.
 
-### Páginas
+## Desarrollo local
 
-| Página | Archivo | Contenido |
-|---|---|---|
-| Inicio | `index.html` | Hero, propuesta de valor, hermanos, eventos, blog destacado, CTA |
-| Nosotros | `nosotros.html` | Historia de Leo y Juan Antonio, línea de tiempo y valores |
-| Eventos | `eventos.html` | Servicios (bodas, comuniones, cumpleaños, empresa), proceso y carta |
-| Blog | `blog.html` | Listado de artículos |
-| Contacto | `contacto.html` | Formulario de presupuesto e información de contacto |
+En Windows, haz doble clic en `abrir-web.cmd`. La web se abrirá en `http://127.0.0.1:4173/` mediante el servidor local incluido.
 
-### Artículos del blog (`/blog/`)
+Para desarrollar con recarga automática:
 
-- `pizza-napolitana-autentica.html` — Qué hace auténtica a una pizza napolitana
-- `pizza-en-tu-boda.html` — Pizza napolitana en tu boda
-- `historia-pizzplass.html` — Dos hermanos, un horno y mucha ilusión
-- `secretos-masa-48-horas.html` — La fermentación de 48 horas
-- `como-elegir-catering-evento.html` — Cómo elegir el catering perfecto
-- `horno-lena-espectaculo.html` — El horno de gas portátil como experiencia
+```bash
+pnpm install
+pnpm dev
+```
+
+Para verificar la versión de producción:
+
+```bash
+pnpm build
+```
 
 ## Estructura
 
-```
-.
-├── index.html
-├── nosotros.html
-├── eventos.html
-├── blog.html
-├── contacto.html
-├── blog/                  # artículos individuales
-├── css/styles.css         # sistema de diseño
-├── js/main.js             # menú móvil, animaciones, formulario (email + WhatsApp)
-└── assets/logo.jpg        # logo de la marca
-```
-
-## Cómo verlo
-
-Abre `index.html` en el navegador, o sirve la carpeta con un servidor local:
-
-```bash
-python3 -m http.server 8000
-# luego visita http://localhost:8000
+```text
+src/
+  main.jsx       Entrada de React
+  site.jsx       Páginas y componentes
+  articles.js    Contenido del blog
+  styles.css     Sistema visual responsive
+public/
+  data/          Instagram y reseñas de Google
+  CNAME          Dominio pizzplass.es
+assets/
+  logo.jpg       Logo fuente
 ```
 
-## Notas
+## Publicación
 
-- **Diseño:** paleta italiana (tomate, albahaca, dorado y crema), tipografía serif para titulares y responsive completo (móvil incluido).
-- **Datos de contacto:** Instagram [@pizzplass_pizzas](https://www.instagram.com/pizzplass_pizzas), TikTok `pizzplass.pizzas`, WhatsApp `675 26 49 67` y email `pizzplasspizzas@gmail.com` son reales.
-- **Logo:** `assets/logo.jpg` (logo real de la marca).
-- **Formulario de contacto:** funcional sin backend. Envía por **email vía [FormSubmit](https://formsubmit.co)** (requiere activar el correo una vez) y ofrece un botón de **WhatsApp** con los datos prerrellenados. Todos los campos son obligatorios.
-- **SEO:** cada página incluye `title`, `meta description`, `canonical`, Open Graph y Twitter Card. Datos estructurados JSON-LD: `FoodEstablishment` + `WebSite` (inicio), `BlogPosting` (artículos), `BreadcrumbList` y `ContactPage`. `sitemap.xml` y `robots.txt` incluidos.
-- **Publicación:** GitHub Pages sirviendo `master` (raíz) con dominio propio `pizzplass.es` (archivo `CNAME`).
+`.github/workflows/deploy-pages.yml` compila y publica la carpeta `dist` automáticamente al enviar cambios a `master`. En GitHub Pages debe estar seleccionada la fuente **GitHub Actions**.
+
+Los flujos de Instagram y Google actualizan `public/data/` cada seis horas. Las claves se configuran únicamente como secretos del repositorio:
+
+- `IG_USER_ID`
+- `IG_ACCESS_TOKEN`
+- `GOOGLE_PLACES_API_KEY`

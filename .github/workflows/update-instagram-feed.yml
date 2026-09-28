@@ -1,0 +1,39 @@
+name: Actualizar feed de Instagram
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-feed:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Consultar las últimas publicaciones con la API de Instagram
+        env:
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+        run: |
+          test -n "$IG_ACCESS_TOKEN"
+          test -n "$IG_USER_ID"
+          curl --fail --silent --show-error \
+            "https://graph.instagram.com/${IG_USER_ID}/media?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&limit=6&access_token=${IG_ACCESS_TOKEN}" \
+            --output public/data/instagram-feed.json
+          jq -e '.data | type == "array"' public/data/instagram-feed.json > /dev/null
+
+      - name: Guardar el feed actualizado
+        run: |
+          if git diff --quiet -- public/data/instagram-feed.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/instagram-feed.json
+          git commit -m "Actualizar publicaciones de Instagram"
+          git push

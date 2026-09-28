@@ -1,0 +1,39 @@
+name: Actualizar reseñas de Google
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "29 */6 * * *"
+
+permissions:
+  contents: write
+
+jobs:
+  update-reviews:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Consultar reseñas con Google Places API
+        env:
+          GOOGLE_PLACES_API_KEY: ${{ secrets.GOOGLE_PLACES_API_KEY }}
+        run: |
+          test -n "$GOOGLE_PLACES_API_KEY"
+          curl --fail --silent --show-error \
+            -H "X-Goog-Api-Key: ${GOOGLE_PLACES_API_KEY}" \
+            -H "X-Goog-FieldMask: rating,userRatingCount,reviews" \
+            "https://places.googleapis.com/v1/places/ChIJhwj6rkzJyKARsZ8s-ct87m0" \
+            --output public/data/google-reviews.json
+          jq -e '.reviews | type == "array"' public/data/google-reviews.json > /dev/null
+
+      - name: Guardar las reseñas actualizadas
+        run: |
+          if git diff --quiet -- public/data/google-reviews.json; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add public/data/google-reviews.json
+          git commit -m "Actualizar reseñas de Google"
+          git push
