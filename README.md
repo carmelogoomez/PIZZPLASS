@@ -35,18 +35,20 @@ src/
   site.jsx       Páginas y componentes
   articles.js    Contenido del blog
   styles.css     Sistema visual responsive
+  BudgetForm.jsx Formulario de presupuesto por pasos
+  data/          Provincias y municipios peninsulares
 public/
   data/          Instagram y reseñas de Google
   CNAME          Dominio pizzplass.es
 assets/
-  logo.jpg       Logo fuente
+  logo2.png      Logo principal
 ```
 
 ## Publicación
 
 `.github/workflows/deploy-pages.yml` compila y publica la carpeta `dist` automáticamente al enviar cambios a `master`. En GitHub Pages debe estar seleccionada la fuente **GitHub Actions**.
 
-Los flujos de Instagram y Google actualizan `public/data/` cada seis horas. Las claves se configuran únicamente como secretos del repositorio:
+Los flujos de Instagram y Google están preparados para ejecutarse manualmente cuando se configuren las claves. Todavía no tienen programación periódica. Las claves se configuran únicamente como secretos del repositorio:
 
 - `IG_USER_ID`
 - `IG_ACCESS_TOKEN`

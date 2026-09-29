@@ -1,0 +1,23 @@
+.budget-wizard{min-width:0}
+.budget-progress-label{display:flex;justify-content:space-between;font-size:.8rem;font-weight:700;color:var(--muted)}
+.budget-progress{display:block;appearance:none;width:100%;height:7px;border:0;border-radius:20px;overflow:hidden;margin:12px 0 32px;background:var(--sand);color:var(--amber)}
+.budget-progress::-webkit-progress-bar{background:var(--sand)}
+.budget-progress::-webkit-progress-value{background:var(--amber);transition:width .25s ease}
+.budget-progress::-moz-progress-bar{background:var(--amber)}
+.budget-step.form-grid{display:flex;flex-direction:column;gap:10px;min-height:195px;animation:budget-pop .26s ease-out}
+.budget-step.form-grid label{font:600 clamp(1.3rem,4vw,1.7rem)/1.3 var(--serif)}
+.budget-step.form-grid input,.budget-step.form-grid select,.budget-step.form-grid textarea{margin:0;font-size:16px;min-width:0;max-width:100%}
+.budget-step small,.budget-help{color:var(--muted);font-size:.8rem;line-height:1.5}
+.budget-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:25px}
+.budget-next{margin-left:auto}
+.budget-back{background:var(--cream);border-color:var(--line);color:var(--ink)}
+.budget-final{display:grid;gap:10px;flex:1}
+.budget-whatsapp{background:#157a43;color:#fff}
+.budget-wizard button:disabled,.budget-whatsapp[aria-disabled=true]{opacity:.6;cursor:wait}
+.budget-wizard .button:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.site-frame main .budget-wizard .privacy-note{color:var(--muted)}
+.budget-help{display:block;margin-top:12px;text-align:center}
+.budget-success h2{font-size:1.8rem;margin-bottom:18px}
+@keyframes budget-pop{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:580px){.budget-actions:has(.budget-final){flex-direction:column-reverse;align-items:stretch}.budget-step.form-grid{min-height:205px}.contact-layout>.budget-form{grid-row:1}}
+@media(prefers-reduced-motion:reduce){.budget-step.form-grid{animation:none}.budget-progress::-webkit-progress-value{transition:none}}

@@ -32,7 +32,7 @@ function reactPages() {
         writeFileSync(target, html, 'utf8');
       });
       mkdirSync('dist/assets', { recursive: true });
-      copyFileSync('assets/logo.jpg', 'dist/assets/logo.jpg');
+      copyFileSync('assets/logo2.png', 'dist/assets/logo2.png');
     }
   };
 }

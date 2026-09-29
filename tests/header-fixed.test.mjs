@@ -121,6 +121,97 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
       }
     }
   });
+
+  await t.test('el presupuesto avanza, filtra localidades y entrega todos los datos por correo o WhatsApp', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/contacto.html' });
+    await waitForApp(cdp);
+    const evaluate = async expression => (await cdp.send('Runtime.evaluate', { expression, returnByValue: true })).result.value;
+    const current = () => evaluate("document.querySelector('.budget-step [name]')?.name");
+    const fill = async value => {
+      await evaluate(`(() => {
+        const input = document.querySelector('.budget-step [name]');
+        const proto = input.tagName === 'SELECT' ? HTMLSelectElement.prototype : input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        Object.getOwnPropertyDescriptor(proto, 'value').set.call(input, ${JSON.stringify(value)});
+        input.dispatchEvent(new Event(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }));
+      })()`);
+    };
+    const next = () => evaluate("document.querySelector('.budget-wizard button[type=submit]').click()");
+    const back = () => evaluate("document.querySelector('.budget-back').click()");
+    assert.equal(await current(), 'nombre');
+    assert.equal(await evaluate("Boolean(document.querySelector('.budget-back'))"), false);
+    await next();
+    assert.equal(await current(), 'nombre', 'un campo vacío no debe avanzar');
+    const answers = { nombre: 'Cliente de prueba', email: 'prueba@example.com', telefono: '600123456', tipo: 'Catas privadas', fecha: '2027-06-12' };
+    for (const [name, value] of Object.entries(answers)) {
+      assert.equal(await current(), name);
+      if (name === 'email') { await fill('correo-incorrecto'); await next(); assert.equal(await current(), 'email'); }
+      if (name === 'tipo') {
+        const choices = await evaluate("[...document.querySelector('[name=tipo]').options].map(o=>o.value)");
+        assert.ok(choices.includes('Eventos corporativos'));
+        assert.ok(choices.includes('Post-Eventos Deportivos'));
+        assert.ok(choices.includes('Ferias, Mercados y Festivales'));
+      }
+      await fill(value); await next();
+    }
+    assert.equal(await current(), 'provincia');
+    const provinceOptions = await evaluate("[...document.querySelector('[name=provincia]').options].map(option => option.value)");
+    assert.equal(provinceOptions.length, 48, '47 provincias peninsulares y la opción vacía');
+    for (const excluded of ['Balears, Illes', 'Las Palmas', 'Santa Cruz de Tenerife', 'Ceuta', 'Melilla']) assert.ok(!provinceOptions.includes(excluded), excluded);
+    assert.ok(provinceOptions.includes('La Rioja'), 'los artículos deben aparecer antes del nombre');
+    await fill('Sevilla'); await next();
+    assert.equal(await current(), 'localidad');
+    assert.equal(await evaluate("[...document.querySelector('[name=localidad]').options].some(o=>o.value==='Dos Hermanas')"), true);
+    assert.equal(await evaluate("[...document.querySelector('[name=localidad]').options].some(o=>o.value==='Madrid')"), false);
+    await fill('Dos Hermanas'); await next(); await back();
+    assert.equal(await evaluate("document.querySelector('[name=localidad]').value"), 'Dos Hermanas');
+    assert.equal(await evaluate("[...document.querySelector('[name=localidad]').options].some(o=>o.value==='La Puebla del Río')"), true);
+    assert.equal(await evaluate("[...document.querySelector('[name=localidad]').options].some(o=>o.value==='Puebla del Río, La')"), false);
+    await back(); await fill('Madrid'); await next();
+    assert.equal(await evaluate("document.querySelector('[name=localidad]').value"), '', 'cambiar provincia borra localidad');
+    assert.equal(await evaluate("[...document.querySelector('[name=localidad]').options].some(o=>o.value==='Dos Hermanas')"), false);
+    await fill('Madrid'); await next();
+    await fill('450'); await next();
+    await fill('Celebración de prueba, opciones sin lactosa.');
+    assert.equal(await evaluate("Boolean(document.querySelector('.budget-next'))"), false);
+    assert.equal(await evaluate("document.querySelector('progress').value"), 9);
+    const link = new URL(await evaluate("document.querySelector('.budget-whatsapp').href"));
+    assert.equal(link.pathname, '/34675264967');
+    const message = link.searchParams.get('text');
+    for (const value of [...Object.values(answers).filter(v=>v!=='2027-06-12'), '12/06/2027', 'Provincia: Madrid', 'Pueblo/Localidad: Madrid', '450', 'opciones sin lactosa']) assert.ok(message.includes(value), value);
+    // Intercept the external boundary only: never send a real request during tests.
+    await evaluate(`window.__requests=[]; window.fetch=async(url,options)=>{
+      window.__requests.push({url,body:JSON.parse(options.body)});
+      return {ok:true,json:async()=>({success:false})};
+    }`);
+    await next();
+    for(let attempt=0;attempt<30 && !(await evaluate("Boolean(document.querySelector('[role=alert]'))"));attempt++) await new Promise(r=>setTimeout(r,30));
+    assert.equal(await current(), 'mensaje', 'un rechazo conserva las respuestas');
+    assert.equal(await evaluate("document.querySelector('[name=mensaje]').value"), 'Celebración de prueba, opciones sin lactosa.');
+    await evaluate(`window.fetch=async(url,options)=>{
+      window.__requests.push({url,body:JSON.parse(options.body)});
+      return {ok:true,json:async()=>({success:'true'})};
+    }`);
+    await next();
+    for(let attempt=0;attempt<30 && !(await evaluate("Boolean(document.querySelector('.budget-success'))"));attempt++) await new Promise(r=>setTimeout(r,30));
+    assert.equal(await evaluate("Boolean(document.querySelector('.budget-success'))"), true);
+    const requests = await evaluate("window.__requests");
+    assert.equal(requests.length,2);
+    assert.equal(requests[1].url,'https://formsubmit.co/ajax/pizzplasspizzas@gmail.com');
+    assert.deepEqual(requests[1].body, {...answers, provincia:'Madrid', localidad:'Madrid', invitados:'450', mensaje:'Celebración de prueba, opciones sin lactosa.', _honey:'', _subject:'Nueva solicitud de presupuesto — PizzPlass', _template:'table', _captcha:'false'});
+
+    await evaluate("document.querySelector('.budget-success button').click()");
+    const secondAnswers = ['Otra persona', 'otra@example.com', '600987654', 'Cumpleaños', '2027-07-12', 'Sevilla', 'Sevilla', '30'];
+    for (const value of secondAnswers) { await fill(value); await next(); }
+    assert.equal(await current(), 'mensaje');
+    assert.equal(await evaluate("document.querySelector('[name=mensaje]').required"), false);
+    assert.equal(await evaluate("document.querySelector('.budget-step label').textContent.includes('*')"), false);
+    assert.equal(await evaluate("new URL(document.querySelector('.budget-whatsapp').href).searchParams.get('text').includes('Cuéntanos algo más:')"), false);
+    await next();
+    for(let attempt=0;attempt<30 && !(await evaluate("Boolean(document.querySelector('.budget-success'))"));attempt++) await new Promise(r=>setTimeout(r,30));
+    assert.equal(await evaluate("Boolean(document.querySelector('.budget-success'))"), true, 'el último campo vacío permite enviar');
+    assert.equal((await evaluate("window.__requests"))[2].body.mensaje, '');
+  });
   await t.test('permanece fija sin tapar el contenido al hacer scroll', async () => {
     for (const viewport of [{ width: 390, height: 844, mobile: true }, { width: 1280, height: 900, mobile: false }]) {
       await cdp.send('Emulation.setDeviceMetricsOverride', { ...viewport, deviceScaleFactor: 1 });
@@ -237,39 +328,71 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
     assert.equal((await state()).visible, 'hidden');
   });
 
-  await t.test('la portada muestra el humo detrás del contenido sin bloquearlo', async () => {
+  await t.test('todas las páginas muestran un único fondo de humo sin bloquear el contenido', async () => {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
-    await waitForApp(cdp);
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const result = await cdp.send('Runtime.evaluate', {
-      expression: `(() => {
-        const canvas = document.querySelector('#fondo-humo');
-        if (!canvas) return null;
-        const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
-        let visiblePixels = 0;
-        for (let index = 3; index < pixels.length; index += 64) if (pixels[index] > 0) visiblePixels++;
-        const style = getComputedStyle(canvas);
-        return { visiblePixels, position: style.position, pointerEvents: style.pointerEvents, width: canvas.width, height: canvas.height };
-      })()`,
-      returnByValue: true,
-    });
-    const smoke = result.result.value;
-    assert.ok(smoke?.visiblePixels > 0, 'la animación debe pintar humo visible en la portada');
-    assert.equal(smoke.position, 'fixed');
-    assert.equal(smoke.pointerEvents, 'none', 'el humo no debe bloquear los enlaces');
-    assert.ok(smoke.width >= 390 && smoke.height >= 844, 'el fondo debe cubrir la pantalla móvil');
+    const routes = [
+      '/',
+      '/nosotros.html',
+      '/eventos.html',
+      '/blog.html',
+      '/blog/pizza-napolitana-autentica.html',
+      '/contacto.html',
+      '/pagina-inexistente.html',
+    ];
+
+    for (const route of routes) {
+      await cdp.send('Page.navigate', { url: `http://127.0.0.1:4175${route}` });
+      await waitForApp(cdp);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const result = await cdp.send('Runtime.evaluate', {
+        expression: `(() => {
+          const canvases = [...document.querySelectorAll('#fondo-humo')];
+          const canvas = canvases[0];
+          if (!canvas) return { count: 0 };
+          const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+          let visiblePixels = 0;
+          for (let index = 3; index < pixels.length; index += 64) if (pixels[index] > 0) visiblePixels++;
+          const style = getComputedStyle(canvas);
+          const frameStyle = getComputedStyle(document.querySelector('.site-frame'));
+          const mainStyle = getComputedStyle(document.querySelector('main'));
+          const headingStyle = getComputedStyle(document.querySelector('main h1'));
+          const pageHero = document.querySelector('.page-hero');
+          const softSection = document.querySelector('.section--soft');
+          return {
+            count: canvases.length,
+            visiblePixels,
+            position: style.position,
+            pointerEvents: style.pointerEvents,
+            width: canvas.width,
+            height: canvas.height,
+            frameBackground: frameStyle.backgroundColor,
+            mainBackground: mainStyle.backgroundColor,
+            headingColor: headingStyle.color,
+            pageHeroBackground: pageHero ? getComputedStyle(pageHero).backgroundImage : 'none',
+            softSectionBackground: softSection ? getComputedStyle(softSection).backgroundColor : 'rgba(0, 0, 0, 0)',
+          };
+        })()`,
+        returnByValue: true,
+      });
+      const smoke = result.result.value;
+      assert.equal(smoke.count, 1, `${route} debe incluir un solo fondo de humo`);
+      assert.ok(smoke.visiblePixels > 0, `${route} debe pintar humo visible`);
+      assert.equal(smoke.position, 'fixed');
+      assert.equal(smoke.pointerEvents, 'none', 'el humo no debe bloquear los enlaces');
+      assert.ok(smoke.width >= 390 && smoke.height >= 844, 'el fondo debe cubrir la pantalla móvil');
+      assert.equal(smoke.frameBackground, 'rgb(20, 23, 25)', `${route} debe usar el mismo fondo oscuro que Inicio`);
+      assert.equal(smoke.mainBackground, 'rgba(0, 0, 0, 0)', `${route} no debe cubrir el humo con una capa clara`);
+      assert.equal(smoke.pageHeroBackground, 'none', `${route} no debe ocultar el humo detrás de su cabecera`);
+      assert.equal(smoke.softSectionBackground, 'rgba(0, 0, 0, 0)', `${route} no debe ocultar el humo en sus secciones`);
+      assert.ok(contrastRatio(smoke.headingColor, smoke.frameBackground) >= 4.5, `${route} debe conservar contraste en sus títulos`);
+    }
+
     await cdp.send('Runtime.evaluate', { expression: `window.scrollTo(0, 900)` });
     const scrolledCanvas = await cdp.send('Runtime.evaluate', {
       expression: `document.querySelector('#fondo-humo').getBoundingClientRect().top`,
       returnByValue: true,
     });
-    assert.equal(scrolledCanvas.result.value, 0, 'el humo debe seguir fijo mientras se desplaza la portada');
-
-    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
-    await waitForApp(cdp);
-    const otherPage = await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('#fondo-humo'))`, returnByValue: true });
-    assert.equal(otherPage.result.value, false, 'el humo debe quedar limitado a la portada');
+    assert.equal(scrolledCanvas.result.value, 0, 'el humo debe seguir fijo mientras se desplaza cualquier página');
   });
 
   await t.test('resume las ocasiones de la landing sin perder los iconos principales', async () => {
@@ -294,8 +417,13 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
       { title: 'Post-Eventos Deportivos', icons: '🏋️', href: '/eventos.html' },
       { title: 'Ferias, Mercados y Festivales', icons: '🎪 🎉', href: '/eventos.html' },
       { title: 'Eventos corporativos', icons: '🏢', href: '/eventos.html' },
-      { title: 'También organizamos catas privadas. ¿Quieres vivir la experiencia? Consúltanos sin compromiso!', icons: '🥂 🍕 ✨', href: '/contacto.html' },
+      { title: 'Catas privadas', icons: '🥂 🍕 ✨', href: '/contacto.html' },
     ]);
+    const homeCallout = await cdp.send('Runtime.evaluate', {
+      expression: `document.querySelector('.occasion-callout')?.textContent.trim()`,
+      returnByValue: true,
+    });
+    assert.equal(homeCallout.result.value, '¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!');
 
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
     await waitForApp(cdp);
@@ -309,6 +437,11 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
     });
     assert.equal(servicesResult.exceptionDetails, undefined, 'la lectura de los servicios no debe producir errores');
     assert.deepEqual(JSON.parse(servicesResult.result.value).map(({ title, icon }) => ({ title, icon })), cards.map(({ title, icons }) => ({ title, icon: icons })), 'Eventos debe mostrar los mismos tipos e iconos que Inicio');
+    const eventsCallout = await cdp.send('Runtime.evaluate', {
+      expression: `document.querySelector('.occasion-callout')?.textContent.trim()`,
+      returnByValue: true,
+    });
+    assert.equal(eventsCallout.result.value, '¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!');
     const eventsPageResult = await cdp.send('Runtime.evaluate', {
       expression: `JSON.stringify({
         photos: [...document.querySelectorAll('.events-carousel img')].map((img) => img.getAttribute('src')),
@@ -396,12 +529,13 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
       expression: `document.querySelector('.menu-button').textContent.trim()`,
       returnByValue: true,
     });
-    assert.equal(menuIconResult.result.value, '🍕', 'el botón que abre el menú móvil debe usar el icono de pizza');
+    assert.equal(menuIconResult.result.value, 'Menú 🍕', 'el botón móvil debe identificar el menú antes del icono de pizza');
     const menuStyleResult = await cdp.send('Runtime.evaluate', {
-      expression: `(() => { const button = document.querySelector('.menu-button'); const style = getComputedStyle(button); return { background: style.backgroundColor, alignment: style.placeItems, width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height }; })()`,
+      expression: `(() => { const button = document.querySelector('.menu-button'); const style = getComputedStyle(button); return { background: style.backgroundColor, color: style.color, alignment: style.placeItems, width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height }; })()`,
       returnByValue: true,
     });
     assert.equal(menuStyleResult.result.value.background, 'rgba(0, 0, 0, 0)', 'el icono pizza no debe tener recuadro de fondo');
+    assert.equal(menuStyleResult.result.value.color, 'rgb(255, 255, 255)', 'la palabra Menú debe mostrarse en blanco');
     assert.equal(menuStyleResult.result.value.alignment, 'center', 'el icono pizza debe estar centrado');
 
     const teamSectionResult = await cdp.send('Runtime.evaluate', {
@@ -420,5 +554,63 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
       copy: 'Hoy contamos con dos puestos de trabajo y seguimos creciendo para llevar PizzPlass a más celebraciones.',
       photos: ['/assets/Equipo/Equipo1.jpeg', '/assets/Equipo/Equipo2.jpeg'],
     }, 'la página Nosotros debe incluir el equipo y todas sus fotos antes de Instagram');
+  });
+
+  await t.test('usa la nueva identidad y comunica el servicio sin límites geográficos ni de aforo', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    const routes = [
+      '/', '/nosotros.html', '/eventos.html', '/blog.html', '/contacto.html',
+      '/blog/pizza-napolitana-autentica.html', '/blog/pizza-en-tu-boda.html',
+      '/blog/historia-pizzplass.html', '/blog/secretos-masa-48-horas.html',
+      '/blog/como-elegir-catering-evento.html', '/blog/horno-lena-espectaculo.html',
+    ];
+
+    for (const route of routes) {
+      await cdp.send('Page.navigate', { url: `http://127.0.0.1:4175${route}` });
+      await waitForApp(cdp);
+      const copyResult = await cdp.send('Runtime.evaluate', {
+        expression: `document.documentElement.textContent`,
+        returnByValue: true,
+      });
+      assert.doesNotMatch(copyResult.result.value, /Palomares del Río/i, `${route} no debe presentar el obrador como ubicación pública`);
+      assert.doesNotMatch(copyResult.result.value, /eventos en Andalucía|para eventos en Andalucía|Andalucía y comunidades limítrofes/i, `${route} no debe limitar el servicio a Andalucía`);
+      assert.doesNotMatch(copyResult.result.value, /10\s*[–-]\s*400/i, `${route} no debe limitar el número de invitados`);
+
+      const logoResult = await cdp.send('Runtime.evaluate', {
+        expression: `JSON.stringify([...document.querySelectorAll('.brand img')].map((image) => image.getAttribute('src')))`,
+        returnByValue: true,
+      });
+      const logos = JSON.parse(logoResult.result.value);
+      assert.ok(logos.length >= 2, `${route} debe mostrar el logo en cabecera y pie`);
+      assert.ok(logos.every((src) => /logo2\.png(?:\?|$)/.test(src)), `${route} debe usar logo2.png en cabecera y pie`);
+    }
+
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
+    await waitForApp(cdp);
+    const identityResult = await cdp.send('Runtime.evaluate', {
+      expression: `JSON.stringify({
+        heroLogo: document.querySelector('.hero-visual__card img')?.getAttribute('src'),
+        favicon: document.querySelector('link[rel="icon"]')?.getAttribute('href'),
+        socialImage: document.querySelector('meta[property="og:image"]')?.content,
+        structuredData: document.querySelector('script[type="application/ld+json"]')?.textContent,
+      })`,
+      returnByValue: true,
+    });
+    const identity = JSON.parse(identityResult.result.value);
+    assert.match(identity.heroLogo, /logo2\.png(?:\?|$)/, 'la portada debe usar logo2.png');
+    assert.equal(identity.favicon, '/assets/logo2.png', 'el favicon debe usar logo2.png');
+    assert.equal(identity.socialImage, 'https://pizzplass.es/assets/logo2.png', 'la imagen al compartir debe usar logo2.png');
+    assert.doesNotMatch(identity.structuredData, /Palomares del Río/i, 'los datos SEO no deben publicar Palomares del Río');
+    assert.match(identity.structuredData, /España/i, 'los datos SEO deben indicar España como zona de servicio');
+
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
+    await waitForApp(cdp);
+    const serviceResult = await cdp.send('Runtime.evaluate', {
+      expression: `document.querySelector('.location')?.innerText`,
+      returnByValue: true,
+    });
+    assert.match(serviceResult.result.value, /mínimo(?: de)? 48 horas de fermentación/i, 'Eventos debe explicar la preparación de la masa en el obrador');
+    assert.match(serviceResult.result.value, /ingredientes.*horneado final.*directo/is, 'Eventos debe explicar el acabado en directo');
+    assert.match(serviceResult.result.value, /cualquier punto de España/i, 'Eventos debe comunicar la cobertura nacional');
   });
 });

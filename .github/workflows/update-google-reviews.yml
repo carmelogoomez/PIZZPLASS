@@ -2,8 +2,6 @@ name: Actualizar reseñas de Google
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "29 */6 * * *"
 
 permissions:
   contents: write
