@@ -1,5 +1,11 @@
-import { useEffect, useState } from 'react';
-import logo from '../assets/logo2.png';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import logo from '../assets/logo.png';
+import haciendaPhoto from '../assets/Pizzplass Hacienda.png';
+import prosciuttoPhoto from '../assets/Pizza Prosciutto.png';
+import fourCheesePhoto from '../assets/Pizza 4 Quesos.png';
+import pepperoniPhoto from '../assets/Pizza Pepperoni.png';
+import carbonaraPhoto from '../assets/Pizza Carbonara.png';
 import { articleBySlug, articles } from './articles';
 import SmokeBackground from './SmokeBackground';
 import BudgetForm from './BudgetForm';
@@ -80,7 +86,7 @@ function Cta({ title = '¿Ponemos fecha a tu evento?', text = 'Cuéntanos dónde
 
 export function Home() {
   useSeo('PizzPlass — Pizza napolitana para eventos', 'Pizza napolitana elaborada al momento para bodas, comuniones, cumpleaños, ferias y eventos en toda España.');
-  return <Layout immersive><div className="home-page"><section className="home-hero"><div className="shell home-hero__grid"><div className="home-hero__copy"><Eyebrow>Pizza napolitana · eventos en toda España</Eyebrow><h1>El horno llega.<br/><em>La fiesta empieza.</em></h1><p>Terminamos y horneamos cada pizza delante de tus invitados: masa lenta, ingredientes cuidados y ese punto de espectáculo que se recuerda.</p><div className="hero-actions"><Button href="/contacto.html">Solicita presupuesto <span>→</span></Button><Button href={whatsapp} variant="quiet" external>Hablemos por WhatsApp</Button></div><div className="trust-row"><span><b>48 h</b> de fermentación</span><span><b>450 °C</b> de horno</span><span><b>A medida</b> para cada evento</span></div></div><div className="hero-visual" aria-label="PizzPlass Pizza Experiences"><div className="hero-visual__halo"></div><div className="hero-visual__card"><img src={logo} alt="PizzPlass Pizza Experiences" /></div><span className="hero-visual__note note--one">🔥 Al momento</span><span className="hero-visual__note note--two">📍 Desde Sevilla</span></div></div></section>
+  return <Layout immersive><div className="home-page"><section className="home-hero"><div className="shell home-hero__grid"><div className="home-hero__copy"><Eyebrow>Pizza napolitana · eventos en toda España</Eyebrow><h1>El horno llega.<br/><em>La fiesta empieza.</em></h1><p>Terminamos y horneamos cada pizza delante de tus invitados: masa lenta, ingredientes cuidados y ese punto de espectáculo que se recuerda.</p><div className="hero-actions"><Button href="/contacto.html">Solicita presupuesto <span>→</span></Button><Button href={whatsapp} variant="quiet" external>Hablemos por WhatsApp</Button></div><div className="trust-row"><span><b>48 h</b> de fermentación</span><span><b>450 °C</b> de horno</span><span><b>A medida</b> para cada evento</span></div></div><div className="hero-visual" aria-label="PizzPlass en una hacienda para eventos"><div className="hero-visual__halo"></div><div className="hero-visual__card"><img src={haciendaPhoto} alt="Rótulo de PizzPlass en el césped de una hacienda con mesas de celebración y piscina" fetchPriority="high" /></div><span className="hero-visual__note note--one">🔥 Al momento</span><span className="hero-visual__note note--two">📍 Desde Sevilla</span></div></div></section>
     <section className="section" id="eventos"><div className="shell"><div className="section-heading"><div><Eyebrow>Tu ocasión, nuestro horno</Eyebrow><h2>Hay muchas formas de celebrar.<br/>Todas mejoran con pizza.</h2></div><a className="arrow-link" href="/eventos.html">Ver todos los servicios →</a></div><div className="occasion-grid">{eventTypes.map(([icon, title, href]) => <a href={href} className="occasion" key={title}><span>{icon}</span><strong>{title}</strong><small>Descubrir →</small></a>)}</div><p className="occasion-callout">¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!</p></div></section>
     <section className="section section--ink"><div className="shell experience"><div><Eyebrow>Esto no es solo catering</Eyebrow><h2>El aroma, el fuego y la primera pizza saliendo del horno.</h2></div><div className="experience__copy"><p>Montamos un rincón napolitano dentro de tu evento. Tus invitados ven cómo nace cada pizza y la disfrutan recién hecha.</p><ul><li>Montaje y recogida incluidos</li><li>Carta adaptada a tu celebración</li><li>Servicio cercano de Leo y Juan Antonio</li></ul><Button href="/nosotros.html" variant="light">Conoce PizzPlass</Button></div></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><Eyebrow>Sin complicaciones</Eyebrow><h2>De tu idea al primer bocado</h2></div></div><div className="process">{[['01','Cuéntanos el plan','Fecha, lugar e invitados.'],['02','Recibe tu propuesta','Te enviamos una opción a medida.'],['03','Disfruta del evento','Nosotros montamos, cocinamos y recogemos.']].map(([n,t,p]) => <div className="process__item" key={n}><span>{n}</span><h3>{t}</h3><p>{p}</p></div>)}</div></div></section>
@@ -91,14 +97,73 @@ export function Home() {
 export function Events() {
   useSeo('Eventos — PizzPlass', 'Pizza napolitana al momento para bodas, comuniones, cumpleaños, deporte, ferias y empresas.', 'eventos.html');
   const eventPhotos = photosFromFolder(eventAssets, 'PizzPlass en eventos');
-  const pizzas = ['Prosciutto', '4 quesos', 'Pepperoni', 'Carbonara', 'Especial PizzPlass'];
+  const pizzas = [
+    { name: 'Prosciutto', icon: '🐷', photo: prosciuttoPhoto },
+    { name: '4 quesos', icon: '🧀', photo: fourCheesePhoto },
+    { name: 'Pepperoni', icon: 'pepperoni', photo: pepperoniPhoto },
+    { name: 'Carbonara', icon: '🥓🍄', photo: carbonaraPhoto },
+    { name: 'Especial PizzPlass', icon: '❓🍕❓' },
+  ];
+  const [activePizza, setActivePizza] = useState(null);
+  const [isClosingPizza, setIsClosingPizza] = useState(false);
+  const closeButtonRef = useRef(null);
+  const triggerRef = useRef(null);
+
+  const closePizza = () => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      setActivePizza(null);
+      return;
+    }
+    setIsClosingPizza(true);
+  };
+
+  useEffect(() => {
+    if (!activePizza) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeButtonRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') closePizza();
+      if (event.key === 'Tab') {
+        event.preventDefault();
+        closeButtonRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', onKeyDown);
+      triggerRef.current?.focus();
+    };
+  }, [activePizza]);
+
+  useEffect(() => {
+    if (!isClosingPizza) return undefined;
+    const timer = window.setTimeout(() => {
+      setActivePizza(null);
+      setIsClosingPizza(false);
+    }, 240);
+    return () => window.clearTimeout(timer);
+  }, [isClosingPizza]);
+
+  const openPizza = (pizza, event) => {
+    triggerRef.current = event.currentTarget;
+    setIsClosingPizza(false);
+    setActivePizza(pizza);
+  };
   return <Layout>
     <PageHero eyebrow="Servicios" title="Un formato diferente para eventos que quieren sorprender">Montamos, horneamos y servimos. Tú solo tienes que disfrutar.</PageHero>
     <section className="section section--soft"><div className="shell events-gallery"><div><Eyebrow>Así se vive PizzPlass</Eyebrow><h2>Pizza recién hecha, gente disfrutando</h2></div><PhotoCarousel photos={eventPhotos} label="Fotos de eventos PizzPlass" caption="PizzPlass en acción" className="events-carousel" /></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><Eyebrow>Tu ocasión, nuestro horno</Eyebrow><h2>Celebraciones a tu manera</h2></div></div><div className="occasion-grid">{eventTypes.map(([icon, title]) => <a href="/contacto.html" className="occasion" key={title}><span>{icon}</span><strong>{title}</strong><small>Consultar disponibilidad →</small></a>)}</div><p className="occasion-callout">¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!</p></div></section>
     <section className="section section--soft"><div className="shell"><div className="section-heading"><div><Eyebrow>Cómo trabajamos</Eyebrow><h2>Todo preparado para que tú no te ocupes de nada</h2></div></div><div className="process process--four">{[['01','Hablamos','Fecha, lugar e invitados.'],['02','Llegamos','Montamos con antelación.'],['03','Horneamos','Cada pizza, delante de vosotros.'],['04','Recogemos','Dejamos el espacio listo.']].map(([n,t,p])=><div className="process__item" key={n}><span>{n}</span><h3>{t}</h3><p>{p}</p></div>)}</div></div></section>
-    <section className="section"><div className="shell menu-block"><div><Eyebrow>Una muestra de la carta</Eyebrow><h2>Clásicos y sorpresas</h2><p>La Especial PizzPlass es una sorpresa diferente en cada evento.</p></div><div><div className="pizza-list">{pizzas.map((name)=><div key={name}><span>🍕</span><div><h3>{name}</h3></div></div>)}</div><div className="pizza-notes"><p>Posibilidad de pizzas sin gluten, sin lactosa y para otras intolerancias. Consúltanos con antelación.</p><p>También puedes sugerirnos pizzas personalizadas a tu gusto.</p></div></div></div></section>
+    <section className="section"><div className="shell menu-block"><div><Eyebrow>Una muestra de la carta</Eyebrow><h2>Clásicos y sorpresas</h2><p>La Especial PizzPlass es una sorpresa diferente en cada evento.</p></div><div><div className="pizza-list">{pizzas.map((pizza) => {
+      const content = <><span className={`pizza-icon${pizza.name === 'Pepperoni' ? ' pizza-icon--pepperoni' : ''}${!pizza.photo ? ' pizza-icon--special' : ''}`} aria-hidden="true">{pizza.icon}</span><span className="pizza-card__text"><h3>{pizza.name}</h3>{pizza.photo && <small>Ver foto</small>}</span></>;
+      return pizza.photo
+        ? <button type="button" className="pizza-card pizza-card--interactive" key={pizza.name} onClick={(event) => openPizza(pizza, event)} aria-label={`Ver foto de la pizza ${pizza.name}`}>{content}</button>
+        : <div className="pizza-card" key={pizza.name}>{content}</div>;
+    })}</div><div className="pizza-notes"><p>Posibilidad de pizzas sin gluten, sin lactosa y para otras intolerancias. Consúltanos con antelación.</p><p>También puedes sugerirnos pizzas personalizadas a tu gusto.</p></div></div></div></section>
     <section className="section section--ink"><div className="shell location"><span className="location__pin">⌖</span><div><Eyebrow>Del obrador a tu evento</Eyebrow><h2>Desde Sevilla, a cualquier punto de España</h2><p>Preparamos la masa en nuestro obrador con un mínimo de 48 horas de fermentación. En el evento añadimos los ingredientes y hacemos el horneado final en directo para servir cada pizza recién hecha.</p></div><Button href="/contacto.html" variant="light">Consulta tu localidad</Button></div></section><Cta />
+    {activePizza && createPortal(<div className={`pizza-modal${isClosingPizza ? ' is-closing' : ''}`} role="dialog" aria-modal="true" aria-label={`Foto de la pizza ${activePizza.name}`} onClick={(event) => { if (event.target === event.currentTarget) closePizza(); }}><div className="pizza-modal__panel"><button className="pizza-modal__close" type="button" ref={closeButtonRef} onClick={closePizza} aria-label="Cerrar foto">×</button><img src={activePizza.photo} alt={`Pizza ${activePizza.name}`} /></div></div>, document.body)}
   </Layout>;
 }
 

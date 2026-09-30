@@ -41,7 +41,7 @@ public/
   data/          Instagram y reseñas de Google
   CNAME          Dominio pizzplass.es
 assets/
-  logo2.png      Logo principal
+  logo.png       Logo principal
 ```
 
 ## Publicación

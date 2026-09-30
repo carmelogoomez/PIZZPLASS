@@ -1,0 +1,20 @@
+html.pizza-intro-active,body.pizza-intro-active{overflow:hidden}
+.pizza-intro{position:fixed;inset:0;z-index:100;overflow:hidden;isolation:isolate;background:#24140b;pointer-events:all}
+.pizza-intro__video{position:absolute;display:block;pointer-events:none;user-select:none}
+.pizza-intro__video--backdrop{inset:-6%;width:112%;height:112%;object-fit:cover;filter:blur(42px) brightness(.52) saturate(.9);transform:scale(1.04)}
+.pizza-intro__video--main{inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 20px 40px rgba(7,3,1,.55))}
+.pizza-intro::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 35%,rgba(16,6,2,.32) 100%)}
+.pizza-intro__particles{position:absolute;inset:0;z-index:4;pointer-events:none}
+.pizza-intro__particles canvas{display:block;width:100%;height:100%}
+.pizza-intro__flour-veil{position:absolute;inset:-60%;z-index:3;pointer-events:none;opacity:0;background:radial-gradient(circle,rgba(255,252,238,1) 0%,rgba(255,250,235,1) 45%,rgba(255,248,228,.95) 55%,transparent 72%);transform:scale(.1)}
+.pizza-intro.is-bursting .pizza-intro__video--main{animation:video-to-dust 1.1s ease-in forwards}
+.pizza-intro.is-bursting .pizza-intro__video--backdrop{animation:backdrop-fade 1.1s ease-in forwards}
+.pizza-intro.is-bursting .pizza-intro__flour-veil{animation:flour-cover .85s ease-out forwards}
+.pizza-intro.is-dissolving{animation:reveal-real-site .8s ease-in-out forwards}
+.pizza-intro--fallback{background:radial-gradient(circle at center,#6b391e,#24140b)}
+@keyframes video-to-dust{0%{opacity:1;filter:blur(0)}55%{opacity:.8;filter:blur(6px)}100%{opacity:0;filter:blur(25px)}}
+@keyframes backdrop-fade{to{opacity:0}}
+@keyframes flour-cover{0%{opacity:0;transform:scale(.1)}25%{opacity:.7}100%{opacity:1;transform:scale(2.8)}}
+@keyframes reveal-real-site{0%{opacity:1;filter:blur(0)}30%{opacity:.88;filter:blur(3px)}100%{opacity:0;filter:blur(24px)}}
+@media(min-aspect-ratio:1/1){.pizza-intro__video--main{inset:-12.5% 0;width:100%;height:125%}}
+@media(prefers-reduced-motion:reduce){.pizza-intro.is-bursting .pizza-intro__video--main{animation:none}.pizza-intro.is-bursting .pizza-intro__flour-veil{animation:flour-cover .85s ease-out forwards}.pizza-intro.is-dissolving{animation:reveal-real-site .8s ease-out forwards}}

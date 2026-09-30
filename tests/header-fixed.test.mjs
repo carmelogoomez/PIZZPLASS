@@ -82,7 +82,7 @@ function contrastRatio(foreground, background) {
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 }
 
-test('la navegación y la landing responden correctamente', { timeout: 30_000 }, async (t) => {
+test('la navegación y la landing responden correctamente', { timeout: 45_000 }, async (t) => {
   assert.ok(browserPath, 'Se necesita Chrome, Edge o Chromium para comprobar el comportamiento real');
 
   const profile = await mkdtemp(join(tmpdir(), 'pizzplass-header-'));
@@ -105,6 +105,10 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
 
   const cdp = createCdp(page.webSocketDebuggerUrl);
   await cdp.ready;
+  // Esta suite comprueba la web después de la entrada; la intro tiene su propia prueba.
+  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
+  await waitForApp(cdp);
+  await cdp.send('Runtime.evaluate', { expression: "sessionStorage.setItem('pizzplass-intro-seen', '1')" });
   t.after(async () => {
     try { await cdp.send('Browser.close'); } catch {}
     await Promise.race([browserExit, new Promise((resolve) => setTimeout(resolve, 2_000))]);
@@ -556,6 +560,102 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
     }, 'la página Nosotros debe incluir el equipo y todas sus fotos antes de Instagram');
   });
 
+  await t.test('muestra la hacienda en Inicio y abre las fotos de las pizzas en móvil', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
+    await waitForApp(cdp);
+    const hero = (await cdp.send('Runtime.evaluate', {
+      expression: `(() => { const img = document.querySelector('.hero-visual__card img'); const card = img?.closest('.hero-visual__card'); return { src: decodeURI(img?.getAttribute('src') || ''), loaded: img?.naturalWidth > 0, width: card?.getBoundingClientRect().width, height: card?.getBoundingClientRect().height, fit: getComputedStyle(img).objectFit }; })()`,
+      returnByValue: true,
+    })).result.value;
+    assert.match(hero.src, /Pizzplass Hacienda\.png$/, 'Inicio debe mostrar la foto de la hacienda');
+    assert.equal(hero.loaded, true, 'la foto debe cargar a resolución original');
+    assert.ok(Math.abs(hero.width - hero.height) < 2, 'la foto debe mostrarse en un marco cuadrado');
+    assert.equal(hero.fit, 'cover', 'el marco cuadrado puede recortar los laterales');
+
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
+    await waitForApp(cdp);
+    const cards = JSON.parse((await cdp.send('Runtime.evaluate', {
+      expression: `JSON.stringify([...document.querySelectorAll('.pizza-list > *')].map(card => ({ name: card.querySelector('h3')?.textContent.trim(), icon: card.querySelector('.pizza-icon')?.textContent.trim(), clickable: card.tagName === 'BUTTON' })))`,
+      returnByValue: true,
+    })).result.value);
+    assert.deepEqual(cards.map(({ name, clickable }) => [name, clickable]), [
+      ['Prosciutto', true], ['4 quesos', true], ['Pepperoni', true], ['Carbonara', true], ['Especial PizzPlass', false],
+    ]);
+    assert.notEqual(cards[0].icon, cards[1].icon, 'los iconos deben identificar cada pizza');
+    assert.equal(cards[0].icon, '🐷', 'Prosciutto debe mostrar un cerdo');
+    assert.equal(cards[4].icon, '❓🍕❓', 'la Especial debe mostrar la pizza entre interrogaciones');
+
+    for (const [name, file] of [
+      ['Prosciutto', 'Pizza Prosciutto.png'], ['4 quesos', 'Pizza 4 Quesos.png'],
+      ['Pepperoni', 'Pizza Pepperoni.png'], ['Carbonara', 'Pizza Carbonara.png'],
+    ]) {
+      await cdp.send('Runtime.evaluate', { expression: `document.querySelectorAll('.pizza-list button')[${['Prosciutto', '4 quesos', 'Pepperoni', 'Carbonara'].indexOf(name)}].click()` });
+      if (name === 'Prosciutto') {
+        const pop = (await cdp.send('Runtime.evaluate', {
+          expression: `(() => {
+            const panel = document.querySelector('.pizza-modal__panel');
+            const motion = panel?.getAnimations()[0];
+            if (!motion) return null;
+            const duration = motion.effect.getTiming().duration;
+            const scale = () => new DOMMatrixReadOnly(getComputedStyle(panel).transform).a;
+            motion.pause();
+            motion.currentTime = 0;
+            const start = scale();
+            motion.currentTime = duration * .6;
+            const overshoot = scale();
+            motion.finish();
+            return { start, overshoot };
+          })()`,
+          returnByValue: true,
+        })).result.value;
+        assert.ok(pop?.start < .95 && pop?.overshoot > 1.02, `la foto debe entrar con un pop que sobrepasa ligeramente su tamaño final (${JSON.stringify(pop)})`);
+      }
+      await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal img').decode()`, awaitPromise: true });
+      const dialog = (await cdp.send('Runtime.evaluate', {
+        expression: `(() => { const modal = document.querySelector('.pizza-modal'); const img = modal?.querySelector('img'); return { open: modal?.getAttribute('aria-modal'), src: decodeURI(img?.getAttribute('src') || ''), loaded: img?.naturalWidth > 0, width: modal?.querySelector('.pizza-modal__panel')?.getBoundingClientRect().width, viewport: innerWidth, fit: img && getComputedStyle(img).objectFit }; })()`,
+        returnByValue: true,
+      })).result.value;
+      assert.equal(dialog.open, 'true', `${name} debe abrir un visor accesible`);
+      assert.ok(dialog.src.endsWith(file), `${name} debe mostrar su foto correspondiente`);
+      assert.equal(dialog.loaded, true, `${name} debe cargar su foto`);
+      assert.ok(dialog.width < dialog.viewport, 'el visor debe dejar margen lateral en móvil');
+      assert.equal(dialog.fit, 'contain', 'la foto debe verse completa');
+      assert.equal((await cdp.send('Runtime.evaluate', { expression: `Boolean(document.elementFromPoint(8, 8)?.closest('.pizza-modal'))`, returnByValue: true })).result.value, true, 'el visor debe quedar por encima de la cabecera');
+      await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal__close').click()` });
+      assert.equal((await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal')?.classList.contains('is-closing')`, returnByValue: true })).result.value, true, 'la X debe iniciar la salida animada');
+      for (let attempt = 0; attempt < 12 && (await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('.pizza-modal'))`, returnByValue: true })).result.value; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 40));
+      }
+      assert.equal((await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('.pizza-modal'))`, returnByValue: true })).result.value, false, 'la X debe cerrar el visor tras la animación');
+    }
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-list button').click()` });
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal').click()` });
+    assert.equal((await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal')?.classList.contains('is-closing')`, returnByValue: true })).result.value, true, 'tocar fuera debe iniciar la salida animada');
+    for (let attempt = 0; attempt < 12 && (await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('.pizza-modal'))`, returnByValue: true })).result.value; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+    assert.equal((await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('.pizza-modal'))`, returnByValue: true })).result.value, false, 'tocar fuera de la foto debe cerrar el visor');
+
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
+    await waitForApp(cdp);
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-list button').click()` });
+    assert.equal((await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal__panel')?.getAnimations().length`, returnByValue: true })).result.value, 0, 'reducir movimiento debe eliminar el pop');
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal__close').click()` });
+    assert.equal((await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('.pizza-modal'))`, returnByValue: true })).result.value, false, 'reducir movimiento debe cerrar sin espera');
+    await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] });
+
+    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-list button').click()` });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape' });
+    await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape' });
+    assert.equal((await cdp.send('Runtime.evaluate', { expression: `document.querySelector('.pizza-modal')?.classList.contains('is-closing')`, returnByValue: true })).result.value, true, 'Escape debe iniciar el cierre animado');
+    for (let attempt = 0; attempt < 12 && (await cdp.send('Runtime.evaluate', { expression: `Boolean(document.querySelector('.pizza-modal'))`, returnByValue: true })).result.value; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 40));
+    }
+    assert.equal((await cdp.send('Runtime.evaluate', { expression: `document.activeElement === document.querySelector('.pizza-list button')`, returnByValue: true })).result.value, true, 'al cerrar se recupera el foco en la pizza elegida');
+  });
+
   await t.test('usa la nueva identidad y comunica el servicio sin límites geográficos ni de aforo', async () => {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     const routes = [
@@ -582,7 +682,7 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
       });
       const logos = JSON.parse(logoResult.result.value);
       assert.ok(logos.length >= 2, `${route} debe mostrar el logo en cabecera y pie`);
-      assert.ok(logos.every((src) => /logo2\.png(?:\?|$)/.test(src)), `${route} debe usar logo2.png en cabecera y pie`);
+      assert.ok(logos.every((src) => /logo\.png(?:\?|$)/.test(src)), `${route} debe usar logo.png en cabecera y pie`);
     }
 
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
@@ -597,9 +697,9 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
       returnByValue: true,
     });
     const identity = JSON.parse(identityResult.result.value);
-    assert.match(identity.heroLogo, /logo2\.png(?:\?|$)/, 'la portada debe usar logo2.png');
-    assert.equal(identity.favicon, '/assets/logo2.png', 'el favicon debe usar logo2.png');
-    assert.equal(identity.socialImage, 'https://pizzplass.es/assets/logo2.png', 'la imagen al compartir debe usar logo2.png');
+    assert.match(identity.heroLogo, /Pizzplass%20Hacienda\.png(?:\?|$)/, 'la portada debe usar la foto de la hacienda');
+    assert.equal(identity.favicon, '/assets/logo.png', 'el favicon debe usar logo.png');
+    assert.equal(identity.socialImage, 'https://pizzplass.es/assets/logo.png', 'la imagen al compartir debe usar logo.png');
     assert.doesNotMatch(identity.structuredData, /Palomares del Río/i, 'los datos SEO no deben publicar Palomares del Río');
     assert.match(identity.structuredData, /España/i, 'los datos SEO deben indicar España como zona de servicio');
 
@@ -612,5 +712,58 @@ test('la navegación y la landing responden correctamente', { timeout: 30_000 },
     assert.match(serviceResult.result.value, /mínimo(?: de)? 48 horas de fermentación/i, 'Eventos debe explicar la preparación de la masa en el obrador');
     assert.match(serviceResult.result.value, /ingredientes.*horneado final.*directo/is, 'Eventos debe explicar el acabado en directo');
     assert.match(serviceResult.result.value, /cualquier punto de España/i, 'Eventos debe comunicar la cobertura nacional');
+  });
+
+  await t.test('centra los inicios de sección en todas las páginas sin centrar el contenido de las tarjetas', async () => {
+    const routes = [
+      ['/', ['.home-hero__copy h1', '.section-heading h2', '.experience h2', '.cta h2']],
+      ['/eventos.html', ['.page-hero h1', '.events-gallery h2', '.section-heading h2', '.menu-block h2', '.location h2', '.cta h2']],
+      ['/nosotros.html', ['.page-hero h1', '.story h2', '.social-panel h2', '.cta h2']],
+      ['/blog.html', ['.page-hero h1', '.cta h2']],
+      ['/blog/pizza-napolitana-autentica.html', ['.article-page h1', '.article-page__cta h2']],
+      ['/contacto.html', ['.page-hero h1', '.contact-layout aside h2']],
+    ];
+
+    for (const width of [390, 1280]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', { width, height: 900, deviceScaleFactor: 1, mobile: width < 600 });
+      for (const [route, selectors] of routes) {
+        await cdp.send('Page.navigate', { url: `http://127.0.0.1:4175${route}` });
+        await waitForApp(cdp);
+        const result = await cdp.send('Runtime.evaluate', {
+          expression: `(() => {
+            const selectors = ${JSON.stringify(selectors)};
+            return selectors.flatMap(selector => [...document.querySelectorAll(selector)].map(node => ({
+              selector,
+              align: getComputedStyle(node).textAlign,
+            })));
+          })()`,
+          returnByValue: true,
+        });
+        const headings = result.result.value;
+        assert.ok(headings.length >= selectors.length, `${route} debe incluir sus encabezados de sección`);
+        for (const heading of headings) assert.equal(heading.align, 'center', `${route} ${width}px: ${heading.selector} debe estar centrado`);
+
+        const splitEyebrow = {
+          '/nosotros.html': '.story > div:last-child > .eyebrow',
+          '/eventos.html': '.location > div > .eyebrow',
+          '/contacto.html': '.contact-layout aside > .eyebrow',
+        }[route];
+        if (splitEyebrow) {
+          const position = await cdp.send('Runtime.evaluate', {
+            expression: `(() => { const label = document.querySelector(${JSON.stringify(splitEyebrow)}); const own = label.getBoundingClientRect(); const parent = label.parentElement.getBoundingClientRect(); return Math.abs(own.left + own.width / 2 - parent.left - parent.width / 2); })()`,
+            returnByValue: true,
+          });
+          assert.ok(position.result.value < 3, `${route} ${width}px: la etiqueta también debe quedar centrada`);
+        }
+
+        if (route === '/') {
+          const cards = await cdp.send('Runtime.evaluate', {
+            expression: `getComputedStyle(document.querySelector('.occasion')).textAlign`,
+            returnByValue: true,
+          });
+          assert.equal(cards.result.value, 'start', 'el contenido de las tarjetas conserva su alineación');
+        }
+      }
+    }
   });
 });

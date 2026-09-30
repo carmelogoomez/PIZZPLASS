@@ -61,3 +61,56 @@
 
 html,body,#root{width:100%;max-width:100%;overflow-x:hidden}
 @media(max-width:580px){.shell{width:calc(100vw - 30px);max-width:calc(100vw - 30px)}.page-hero h1{font-size:clamp(2.25rem,10.5vw,3rem);overflow-wrap:anywhere}.page-hero p{font-size:1rem}.card-grid,.articles-grid{grid-template-columns:1fr}.occasion-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.occasion,.service-card,.article-card,.contact-layout>*{min-width:0;max-width:100%}.contact-options strong{overflow-wrap:anywhere}.form-grid input,.form-grid select,.form-grid textarea{min-width:0}.trust-row span{min-width:0;flex:1}.eyebrow{max-width:100%;overflow-wrap:anywhere}}
+
+/* Los inicios de sección comparten el encuadre centrado de la portada.
+   El contenido de tarjetas, listas, artículos y formularios conserva su lectura natural. */
+.home-hero__copy,.page-hero__content{text-align:center}
+.home-hero__copy>p,.page-hero h1,.page-hero p{margin-inline:auto}
+.home-hero__copy .hero-actions,.home-hero__copy .trust-row{justify-content:center}
+.section-heading{display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center}
+.section-heading h2{margin-inline:auto}
+.section-heading .arrow-link{margin-top:0}
+.experience>div:first-child,.events-gallery>div:first-child,.menu-block>div:first-child,.social-panel>div:first-child,.cta>div:first-child{text-align:center}
+.experience h2,.events-gallery h2,.menu-block h2,.social-panel h2,.cta h2{margin-inline:auto}
+.menu-block>div:first-child p,.social-panel>div:first-child>p,.cta p{margin-inline:auto}
+.story>div:last-child>.eyebrow,.story>div:last-child>h2,.location>div>.eyebrow,.location>div>h2,.contact-layout aside>.eyebrow,.contact-layout aside>h2,.contact-layout aside>p{text-align:center}
+.story>div:last-child>.eyebrow,.location>div>.eyebrow,.contact-layout aside>.eyebrow{display:block;width:fit-content;margin-inline:auto}
+.story>div:last-child>h2,.location>div>h2,.contact-layout aside>h2{margin-inline:auto}
+.article-page>.tag{display:table;margin-inline:auto}
+.article-page__meta,.article-page>h1,.article-page__cta{text-align:center}
+.form-heading{justify-content:center;text-align:center}
+@media(max-width:580px){.section-heading{display:flex}.section-heading .arrow-link{margin-top:0}}
+
+/* Portada: la foto original conserva su resolución; solo se encuadra con CSS. */
+.hero-visual__card{aspect-ratio:1;display:block;padding:0;overflow:hidden}
+.hero-visual__card img{display:block;width:100%;height:100%;border-radius:inherit;object-fit:cover;object-position:center}
+@media(max-width:580px){.hero-visual__card{width:78%;padding:0}}
+
+/* Carta de eventos y vista ampliada de las pizzas. */
+.pizza-list>.pizza-card{display:flex;align-items:center;gap:14px;min-height:78px;padding:16px 20px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.75);color:var(--ink);font:inherit;text-align:left}
+.pizza-card--interactive{width:100%;cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,background .18s ease}
+.pizza-card--interactive:hover{transform:translateY(-2px);background:#fff;box-shadow:0 12px 28px rgba(57,31,21,.1)}
+.pizza-card--interactive:focus-visible{outline:3px solid var(--amber);outline-offset:3px}
+.pizza-icon{display:inline-flex;flex:0 0 40px;align-items:center;justify-content:center;min-width:40px;min-height:40px;font-size:1.7rem;line-height:1;white-space:nowrap}
+.pizza-icon--pepperoni{position:relative;font-size:0}
+.pizza-icon--pepperoni:before{content:"";display:block;width:31px;height:31px;border:3px solid #a6231d;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f2a17e 0 2px,transparent 3px),radial-gradient(circle at 67% 63%,#922219 0 2px,transparent 3px),radial-gradient(circle at 62% 27%,#c4492c 0 2px,transparent 3px),#d35032;box-shadow:0 2px 5px rgba(86,25,14,.25)}
+.pizza-icon--special{flex-basis:72px;min-width:72px;font-size:1.3rem;letter-spacing:-.12em}
+.pizza-card__text{display:flex;min-width:0;flex-direction:column;gap:3px}
+.pizza-card__text h3{font-family:var(--serif);font-size:1.08rem;line-height:1.2}
+.pizza-card__text small{color:var(--red);font-size:.75rem;font-weight:700}
+.pizza-modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:24px 16px;background:rgba(17,10,8,.78);backdrop-filter:blur(5px)}
+.pizza-modal__panel{position:relative;width:min(420px,100%);max-height:calc(100dvh - 48px);padding:12px;border-radius:20px;background:#fff;box-shadow:0 24px 70px rgba(0,0,0,.4)}
+.pizza-modal__panel img{display:block;width:100%;max-height:calc(100dvh - 72px);border-radius:12px;object-fit:contain}
+.pizza-modal__close{position:absolute;top:18px;right:18px;z-index:1;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;border-radius:50%;background:rgba(255,255,255,.96);color:#2b1512;box-shadow:0 3px 14px rgba(0,0,0,.25);font:700 1.8rem/1 var(--sans);cursor:pointer}
+.pizza-modal__close:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+@media(max-width:580px){.pizza-list>.pizza-card{min-height:74px}.pizza-modal{padding:20px 16px}.pizza-modal__panel{width:min(380px,100%);padding:8px}.pizza-modal__panel img{max-height:calc(100dvh - 56px)}}
+.pizza-modal{isolation:isolate;background:transparent;backdrop-filter:none}
+.pizza-modal::before{content:"";position:absolute;inset:0;z-index:-1;background:rgba(17,10,8,.78);backdrop-filter:blur(5px);animation:pizza-scrim-in .38s ease-out both}
+.pizza-modal__panel{animation:pizza-panel-pop .38s cubic-bezier(.2,.75,.3,1) both}
+.pizza-modal.is-closing::before{animation:pizza-scrim-out .22s ease-in both}
+.pizza-modal.is-closing .pizza-modal__panel{animation:pizza-panel-out .22s cubic-bezier(.4,0,1,1) both}
+@keyframes pizza-scrim-in{from{opacity:0}to{opacity:1}}
+@keyframes pizza-panel-pop{0%{opacity:0;transform:scale(.78)}60%{opacity:1;transform:scale(1.08)}82%{transform:scale(.98)}100%{transform:scale(1)}}
+@keyframes pizza-scrim-out{to{opacity:0}}
+@keyframes pizza-panel-out{to{opacity:0;transform:scale(.88)}}
+@media(prefers-reduced-motion:reduce){.pizza-modal::before,.pizza-modal__panel,.pizza-modal.is-closing::before,.pizza-modal.is-closing .pizza-modal__panel{animation:none}}
