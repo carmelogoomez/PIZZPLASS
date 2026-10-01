@@ -1,0 +1,26 @@
+html.pizza-intro-active,body.pizza-intro-active{overflow:hidden}
+.pizza-intro{position:fixed;inset:0;z-index:100;overflow:hidden;background:#27180f center/cover no-repeat;pointer-events:all}
+.pizza-intro::after{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 37% 30%,rgba(255,217,152,.07),transparent 48%),radial-gradient(circle at center,transparent 32%,rgba(8,4,2,.35) 100%)}
+.pizza-intro__canvas{display:block;width:100%;height:100%;opacity:0;transition:opacity .28s ease}
+.pizza-intro__canvas[data-ready="true"]{opacity:1}
+.pizza-intro.is-ending{animation:intro-disperse 1.25s ease-in both}
+.pizza-intro__fallback{position:absolute;left:50%;top:50%;width:min(74vmin,680px);aspect-ratio:1;transform:translate(-50%,-50%);filter:drop-shadow(0 23px 22px rgba(12,5,2,.36))}
+.pizza-intro__fallback img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+.pizza-intro__fallback-base{animation:fallback-slide 1.28s .38s cubic-bezier(.18,.8,.22,1) both}
+.pizza-intro__fallback-tomato{scale:.76;animation:fallback-fall .8s 1.74s ease-out both}
+.pizza-intro__fallback-cheese{scale:.82;animation:fallback-fall .8s 2.74s ease-out both}
+.pizza-intro__fallback-ham{scale:.82;animation:fallback-fall .8s 3.96s ease-out both}
+.pizza-intro__fallback-basil{scale:.82;animation:fallback-fall .8s 5.17s ease-out both}
+.pizza-intro--fallback{animation:intro-disperse 1.25s 6.95s ease-in both}
+@keyframes fallback-slide{from{transform:translateX(115vw) rotate(13deg)}to{transform:translateX(0) rotate(0)}}
+@keyframes fallback-fall{from{opacity:0;transform:translateY(-36%) scale(2.4);filter:blur(12px)}to{opacity:1;transform:translateY(0) scale(1);filter:blur(0)}}
+@keyframes intro-disperse{0%{opacity:1;filter:blur(0)}32%{opacity:.96;filter:blur(4px)}100%{opacity:0;filter:blur(28px)}}
+@media(max-width:600px){.pizza-intro__fallback{width:min(91vw,65dvh)}}
+@media(prefers-reduced-motion:reduce){
+  .pizza-intro__canvas{transition:none}
+  .pizza-intro.is-ending,.pizza-intro--fallback{animation:intro-fade .9s ease-out both}
+  .pizza-intro__fallback-base{animation:fallback-reveal .4s .38s both}
+  .pizza-intro__fallback-tomato,.pizza-intro__fallback-cheese,.pizza-intro__fallback-ham,.pizza-intro__fallback-basil{animation-name:fallback-reveal;animation-duration:.4s}
+}
+@keyframes fallback-reveal{from{opacity:0}to{opacity:1}}
+@keyframes intro-fade{from{opacity:1}to{opacity:0}}

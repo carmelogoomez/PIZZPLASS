@@ -3,19 +3,13 @@ import table from '../assets/intro/mesa.webp';
 import base from '../assets/intro/masa.webp';
 import tomato from '../assets/intro/tomate.webp';
 import mozzarella from '../assets/intro/mozzarella.webp';
+import ham from '../assets/intro/jamon.webp';
+import basil from '../assets/intro/albahaca.webp';
 import './pizza-intro.css';
 
-const INTRO_DURATION_MS = 6500;
-const FALLBACK_DURATION_MS = 6500;
+const INTRO_DURATION_MS = 8200;
 const SEEN_KEY = 'pizzplass-intro-seen';
-const assets = { table, base, tomato, mozzarella };
-const fallbackPepperoni = [
-  { x: '35%', y: '35%', rotation: '-12deg' },
-  { x: '65%', y: '34%', rotation: '9deg' },
-  { x: '50%', y: '50%', rotation: '-5deg' },
-  { x: '34%', y: '66%', rotation: '11deg' },
-  { x: '66%', y: '65%', rotation: '-8deg' },
-];
+const assets = { table, base, tomato, mozzarella, ham, basil };
 
 function alreadySeen() {
   try { return sessionStorage.getItem(SEEN_KEY) === '1'; }
@@ -29,38 +23,30 @@ function PizzaIntro({ onComplete }) {
   useLayoutEffect(() => {
     let timeout;
     let disposed = false;
-    let sceneFailed = false;
     let disposeScene = () => {};
     import('./pizza-scene').then(({ mountPizzaScene }) => {
       if (disposed) return;
       disposeScene = mountPizzaScene(stage.current, assets, {
         reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
-        onReady: () => { timeout = window.setTimeout(onComplete, sceneFailed ? FALLBACK_DURATION_MS : INTRO_DURATION_MS); },
-        onError: () => { sceneFailed = true; setFallback(true); },
+        onReady: () => { timeout = window.setTimeout(onComplete, INTRO_DURATION_MS); },
+        onError: () => setFallback(true),
       });
     }).catch(() => {
       if (disposed) return;
       setFallback(true);
-      timeout = window.setTimeout(onComplete, FALLBACK_DURATION_MS);
+      timeout = window.setTimeout(onComplete, INTRO_DURATION_MS);
     });
     return () => { disposed = true; window.clearTimeout(timeout); disposeScene(); };
   }, [onComplete]);
 
-  return <div ref={stage} className={`pizza-intro ${fallback ? 'pizza-intro--fallback' : ''}`} role="status" aria-label="Preparando una pizza pepperoni" aria-live="off" style={fallback ? { backgroundImage: `url(${table})` } : undefined}>
-    {fallback && <>
-      <div className="pizza-intro__fallback" aria-hidden="true">
-        <img className="pizza-intro__fallback-base" src={base} alt="" />
-        <img className="pizza-intro__fallback-tomato" src={tomato} alt="" />
-        <img className="pizza-intro__fallback-cheese" src={mozzarella} alt="" />
-        {fallbackPepperoni.map(({ x, y, rotation }, index) => <span
-          className="pizza-intro__fallback-pepperoni"
-          key={`${x}-${y}`}
-          style={{ '--pepperoni-x': x, '--pepperoni-y': y, '--pepperoni-rotation': rotation, '--pepperoni-delay': `${3.23 + index * .135}s` }}
-          data-slice={index + 1}
-        />)}
-      </div>
-      <div className="pizza-intro__fallback-flour" aria-hidden="true" />
-    </>}
+  return <div ref={stage} className={`pizza-intro ${fallback ? 'pizza-intro--fallback' : ''}`} role="status" aria-label="Preparando una pizza napolitana" aria-live="off" style={{ backgroundImage: `url(${table})` }}>
+    {fallback && <div className="pizza-intro__fallback" aria-hidden="true">
+      <img className="pizza-intro__fallback-base" src={base} alt="" />
+      <img className="pizza-intro__fallback-tomato" src={tomato} alt="" />
+      <img className="pizza-intro__fallback-cheese" src={mozzarella} alt="" />
+      <img className="pizza-intro__fallback-ham" src={ham} alt="" />
+      <img className="pizza-intro__fallback-basil" src={basil} alt="" />
+    </div>}
   </div>;
 }
 

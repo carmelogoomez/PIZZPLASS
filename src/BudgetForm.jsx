@@ -1,8 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import municipalities from './data/municipalities.json';
 import './budget-form.css';
+import SocialIcon from './SocialIcon';
 
 const provinces = Object.keys(municipalities).sort((a, b) => a.localeCompare(b, 'es'));
+const localISODate = (date = new Date()) => [
+  date.getFullYear(),
+  String(date.getMonth() + 1).padStart(2, '0'),
+  String(date.getDate()).padStart(2, '0'),
+].join('-');
 const emptyForm = { nombre: '', email: '', telefono: '', tipo: '', fecha: '', provincia: '', localidad: '', invitados: '', mensaje: '', _honey: '' };
 const fields = [
   { name: 'nombre', label: 'Nombre y apellidos', type: 'text', placeholder: 'Tu nombre', autoComplete: 'name' },
@@ -34,6 +40,7 @@ export default function BudgetForm({ eventTypes }) {
   const headingRef = useRef(null);
   const last = step === fields.length - 1;
   const field = fields[step];
+  const minimumDate = localISODate();
   const options = field.name === 'tipo' ? [...eventTypes, 'Otro tipo de evento']
     : field.name === 'provincia' ? provinces : (municipalities[form.provincia] || []);
 
@@ -52,8 +59,15 @@ export default function BudgetForm({ eventTypes }) {
   function validate() {
     const input = fieldRef.current;
     if (!input) return false;
-    input.setCustomValidity(input.value.trim() || last ? '' : 'Completa este campo para continuar.');
+    const dateIsPast = field.name === 'fecha' && input.value && input.value < minimumDate;
+    input.setCustomValidity(dateIsPast
+      ? 'Selecciona hoy o una fecha posterior.'
+      : (input.value.trim() || last ? '' : 'Completa este campo para continuar.'));
     return input.reportValidity();
+  }
+
+  function validDate() {
+    return Boolean(form.fecha) && form.fecha >= minimumDate;
   }
 
   function validLocation() {
@@ -64,6 +78,7 @@ export default function BudgetForm({ eventTypes }) {
     event.preventDefault();
     if (sendingRef.current || !validate()) return;
     if (!last) { setStep(current => current + 1); return; }
+    if (!validDate()) { setStep(4); return; }
     if (!validLocation()) { setStep(5); return; }
     if (form._honey) return;
     sendingRef.current = true;
@@ -110,14 +125,20 @@ export default function BudgetForm({ eventTypes }) {
         ? <select {...common}><option value="">Elige {field.name === 'localidad' ? 'tu localidad' : 'una opción'}</option>{options.map(option => <option key={option} value={option}>{option}</option>)}</select>
         : field.type === 'textarea'
           ? <textarea {...common} placeholder={field.placeholder} maxLength={2000} />
-          : <input {...common} type={field.type} placeholder={field.placeholder} autoComplete={field.autoComplete} {...(field.type === 'number' ? { min: 1, step: 1, inputMode: 'numeric' } : {})} />}
+          : <input {...common} type={field.type} placeholder={field.placeholder} autoComplete={field.autoComplete} {...(field.type === 'date' ? { min: minimumDate } : {})} {...(field.type === 'number' ? { min: 1, step: 1, inputMode: 'numeric' } : {})} />}
       <small id="budget-help">{last ? 'Opcional. Puedes contarnos los detalles que quieras.' : field.name === 'localidad' ? 'Localidades de ' + form.provincia + '. Elige el municipio donde se celebrará el evento.' : 'Este campo es necesario para preparar tu propuesta.'}</small>
     </div>
     <div className="budget-actions">
       {step > 0 && <button type="button" className="button budget-back" disabled={sending} onClick={() => { setStep(current => current - 1); setStatus(''); }}>← Volver</button>}
       {!last ? <button type="submit" className="button button--primary budget-next">Siguiente →</button> : <div className="budget-final">
         <button type="submit" className="button button--primary" disabled={sending}>{sending ? 'Enviando…' : 'Solicitar presupuesto'}</button>
-        <a className="button budget-whatsapp" href={budgetWhatsapp(form)} target="_blank" rel="noopener noreferrer" aria-disabled={sending} onClick={event => { if (sending || !validate() || !validLocation() || form._honey) event.preventDefault(); }}>Escribir por WhatsApp</a>
+        <a className="button budget-whatsapp" href={budgetWhatsapp(form)} target="_blank" rel="noopener noreferrer" aria-disabled={sending} onClick={event => {
+          if (sending || !validate() || !validDate() || !validLocation() || form._honey) {
+            event.preventDefault();
+            if (!validDate()) setStep(4);
+            else if (!validLocation()) setStep(5);
+          }
+        }}><SocialIcon platform="whatsapp" />Escribir por WhatsApp</a>
       </div>}
     </div>
     {status === 'error' && <p role="alert" className="form-message form-message--error">No hemos podido enviarla. Puedes reintentar o escribirnos por WhatsApp con estos mismos datos.</p>}

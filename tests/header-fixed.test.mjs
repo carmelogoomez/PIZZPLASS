@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -15,6 +15,22 @@ const browserCandidates = process.platform === 'win32'
   : ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'];
 
 const browserPath = browserCandidates.find(existsSync);
+
+test('los listados almacenan únicamente nombres en castellano', async () => {
+  const municipalities = JSON.parse(await readFile(new URL('../src/data/municipalities.json', import.meta.url), 'utf8'));
+  const provinces = Object.keys(municipalities);
+  for (const province of ['Álava', 'Alicante', 'Castellón', 'Gerona', 'Guipúzcoa', 'La Coruña', 'Lérida', 'Orense', 'Valencia', 'Vizcaya']) {
+    assert.ok(provinces.includes(province), `debe guardarse la provincia castellana ${province}`);
+  }
+  for (const obsolete of ['Araba/Álava', 'Alicante/Alacant', 'Castellón/Castelló', 'Girona', 'Gipuzkoa', 'A Coruña', 'Lleida', 'Ourense', 'Valencia/València', 'Bizkaia']) {
+    assert.equal(provinces.includes(obsolete), false, `no debe guardarse ${obsolete}`);
+  }
+  const storedNames = [...provinces, ...Object.values(municipalities).flat()];
+  assert.equal(storedNames.some(name => name.includes('/')), false, 'ningún nombre almacenado debe conservar variantes separadas por barras');
+  assert.ok(municipalities.Guipúzcoa.includes('San Sebastián'));
+  assert.ok(municipalities.Guipúzcoa.includes('Mondragón'));
+  assert.ok(municipalities.Vizcaya.includes('Valle de Carranza'));
+});
 
 async function waitForJson(url, attempts = 50) {
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -150,6 +166,12 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     for (const [name, value] of Object.entries(answers)) {
       assert.equal(await current(), name);
       if (name === 'email') { await fill('correo-incorrecto'); await next(); assert.equal(await current(), 'email'); }
+      if (name === 'fecha') {
+        const dates = await evaluate(`(() => { const today = new Date(); const format = date => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1); return { today: format(today), yesterday: format(yesterday), min: document.querySelector('[name=fecha]').min }; })()`);
+        assert.equal(dates.min, dates.today, 'la fecha mínima debe ser el día actual');
+        await fill(dates.yesterday); await next();
+        assert.equal(await current(), 'fecha', 'una fecha anterior a hoy no debe avanzar');
+      }
       if (name === 'tipo') {
         const choices = await evaluate("[...document.querySelector('[name=tipo]').options].map(o=>o.value)");
         assert.ok(choices.includes('Eventos corporativos'));
@@ -216,6 +238,40 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     assert.equal(await evaluate("Boolean(document.querySelector('.budget-success'))"), true, 'el último campo vacío permite enviar');
     assert.equal((await evaluate("window.__requests"))[2].body.mensaje, '');
   });
+
+  await t.test('ordena formulario, ayuda y contacto, compacta el paso y presenta las redes con su identidad', async () => {
+    const evaluate = async expression => (await cdp.send('Runtime.evaluate', { expression, returnByValue: true })).result.value;
+    for (const viewport of [{ width: 390, height: 844, mobile: true }, { width: 1280, height: 900, mobile: false }]) {
+      await cdp.send('Emulation.setDeviceMetricsOverride', { ...viewport, deviceScaleFactor: 1 });
+      await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/contacto.html' });
+      await waitForApp(cdp);
+      const layout = await evaluate(`(() => {
+        const contact = document.querySelector('.contact-layout aside').getBoundingClientRect();
+        const form = document.querySelector('.contact-layout .budget-form').getBoundingClientRect();
+        const tip = document.querySelector('.contact-layout .tip').getBoundingClientRect();
+        const help = document.querySelector('.budget-step small').getBoundingClientRect();
+        const actions = document.querySelector('.budget-actions').getBoundingClientRect();
+        return { contact: contact.toJSON(), form: form.toJSON(), tip: tip.toJSON(), controlsGap: actions.top - help.bottom };
+      })()`);
+      assert.ok(layout.form.top < layout.tip.top, 'el formulario debe aparecer antes de Para afinar');
+      assert.ok(layout.tip.top < layout.contact.top, 'Para afinar debe aparecer antes de Contacto directo');
+      assert.ok(layout.controlsGap <= 40, `el espacio entre la pregunta y los botones debe ser compacto (${layout.controlsGap}px)`);
+    }
+
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 1280, height: 900, deviceScaleFactor: 1, mobile: false });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
+    await waitForApp(cdp);
+    const homeSocials = await evaluate(`[...document.querySelectorAll('a[href*="wa.me"], a[href*="instagram.com"], a[href*="tiktok.com"]')]
+      .filter(link => link.matches('.button, .whatsapp, .socials a, .contact-options a'))
+      .map(link => ({ href: link.href, hasIcon: Boolean(link.querySelector('svg[data-social-icon]')), background: getComputedStyle(link).backgroundColor, color: getComputedStyle(link).color }))`);
+    assert.ok(homeSocials.length >= 6, 'la portada y el pie deben exponer sus accesos sociales');
+    assert.equal(homeSocials.every(link => link.hasIcon), true, 'cada botón social debe mostrar el icono de su plataforma');
+    for (const link of homeSocials.filter(link => link.href.includes('wa.me'))) {
+      assert.deepEqual(colorChannels(link.background), [37, 211, 102], 'los botones de WhatsApp deben usar #25D366');
+      assert.ok(contrastRatio(link.color, link.background) >= 4.5, 'el texto de WhatsApp debe mantener contraste AA');
+    }
+  });
+
   await t.test('permanece fija sin tapar el contenido al hacer scroll', async () => {
     for (const viewport of [{ width: 390, height: 844, mobile: true }, { width: 1280, height: 900, mobile: false }]) {
       await cdp.send('Emulation.setDeviceMetricsOverride', { ...viewport, deviceScaleFactor: 1 });
@@ -428,6 +484,10 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
       returnByValue: true,
     });
     assert.equal(homeCallout.result.value, '¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!');
+    assert.equal((await cdp.send('Runtime.evaluate', {
+      expression: `Boolean(document.querySelector('main .process:not(.process--four)')) || document.body.innerText.includes('De tu idea al primer bocado')`,
+      returnByValue: true,
+    })).result.value, false, 'Inicio no debe mostrar el antiguo proceso de tres pasos');
 
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
     await waitForApp(cdp);
@@ -457,11 +517,45 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     const eventsPage = JSON.parse(eventsPageResult.result.value);
     assert.equal(eventsPage.photos.length, 4, 'el carrusel debe incluir todas las fotos de Eventos');
     const eventsGalleryResult = await cdp.send('Runtime.evaluate', {
-      expression: `(() => { const carousel = document.querySelector('.events-carousel'); const bounds = carousel.getBoundingClientRect(); return { width: bounds.width, height: bounds.height, fit: getComputedStyle(carousel.querySelector('img')).objectFit }; })()`,
+      expression: `(() => { const carousel = document.querySelector('.events-carousel'); const bounds = carousel.getBoundingClientRect(); return { width: bounds.width, height: bounds.height, fit: getComputedStyle(carousel.querySelector('img')).objectFit, cursor: getComputedStyle(carousel).cursor }; })()`,
       returnByValue: true,
     });
     assert.ok(eventsGalleryResult.result.value.height > eventsGalleryResult.result.value.width, 'el carrusel de Eventos debe ser vertical en móvil');
-    assert.equal(eventsGalleryResult.result.value.fit, 'contain', 'las fotos de Eventos deben verse completas');
+    assert.ok(Math.abs(eventsGalleryResult.result.value.width / eventsGalleryResult.result.value.height - .8) < .02, 'las fotos de Eventos deben ocupar un marco 4:5');
+    assert.equal(eventsGalleryResult.result.value.fit, 'cover', 'las fotos de Eventos deben llenar el marco sin deformarse');
+    assert.equal(eventsGalleryResult.result.value.cursor, 'grab', 'el carrusel debe indicar que se puede arrastrar');
+
+    const eventsOrder = await cdp.send('Runtime.evaluate', {
+      expression: `JSON.stringify([...document.querySelectorAll('main > section')].map(section => section.querySelector('h2')?.textContent.trim()).filter(Boolean).slice(0, 4))`,
+      returnByValue: true,
+    });
+    assert.deepEqual(JSON.parse(eventsOrder.result.value), [
+      'Pizza recién hecha, gente disfrutando',
+      'Celebraciones a tu manera',
+      'Clásicos y sorpresas',
+      'Todo preparado para que tú no te ocupes de nada',
+    ], 'Eventos debe ordenar fotos, tipos, carta y Cómo trabajamos');
+
+    await cdp.send('Runtime.evaluate', {
+      expression: `(() => { const carousel = document.querySelector('.events-carousel'); carousel.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: 300 })); carousel.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, pointerType: 'touch', clientX: 100 })); })()`,
+    });
+    assert.deepEqual(JSON.parse((await cdp.send('Runtime.evaluate', {
+      expression: `JSON.stringify([...document.querySelectorAll('.events-carousel .story__slide')].map(slide => slide.classList.contains('is-active')))`,
+      returnByValue: true,
+    })).result.value), [false, true, false, false], 'deslizar con el dedo debe mostrar la foto siguiente');
+
+    const processResult = await cdp.send('Runtime.evaluate', {
+      expression: `JSON.stringify([...document.querySelectorAll('.process--four .process__item')].map(item => ({ number: item.querySelector('span')?.textContent.trim(), title: item.querySelector('h3')?.textContent.trim(), copy: item.querySelector('p')?.textContent.trim() })))`,
+      returnByValue: true,
+    });
+    const process = JSON.parse(processResult.result.value);
+    assert.deepEqual(process.map(item => item.number), ['1', '2', '3', '4'], 'Cómo trabajamos no debe anteponer ceros');
+    assert.deepEqual(process.map(item => item.title), ['Nos cuentas tu idea', 'Preparamos cada detalle', 'Horneamos en directo', 'Recogemos al terminar']);
+    assert.equal(process.every(item => item.copy.length >= 70), true, 'cada paso debe explicar el trabajo con una frase completa');
+    assert.equal((await cdp.send('Runtime.evaluate', {
+      expression: `Boolean(document.querySelector('.location')) || document.body.innerText.includes('Del obrador a tu evento')`,
+      returnByValue: true,
+    })).result.value, false, 'Eventos no debe mostrar el bloque Del obrador a tu evento');
     assert.deepEqual(eventsPage.pizzas, ['Prosciutto', '4 quesos', 'Pepperoni', 'Carbonara', 'Especial PizzPlass']);
     assert.match(eventsPage.notes.join(' '), /sin gluten.*sin lactosa.*intolerancias/i);
     assert.match(eventsPage.notes.join(' '), /pizzas personalizadas/i);
@@ -498,12 +592,17 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
       active: [true, false],
     }, 'las fotos del equipo deben mostrarse en un carrusel con el nombre siempre encima');
 
-    await cdp.send('Runtime.evaluate', { expression: `document.querySelector('[aria-label="Ver siguiente foto"]').click()` });
+    const nextButtonBounds = (await cdp.send('Runtime.evaluate', {
+      expression: `(() => { const button = document.querySelector('.story__carousel [aria-label="Ver siguiente foto"]'); button.scrollIntoView({ block: 'center', behavior: 'instant' }); const bounds = button.getBoundingClientRect(); return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }; })()`,
+      returnByValue: true,
+    })).result.value;
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...nextButtonBounds, button: 'left', clickCount: 1 });
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...nextButtonBounds, button: 'left', clickCount: 1 });
     const activePhotoResult = await cdp.send('Runtime.evaluate', {
       expression: `JSON.stringify([...document.querySelectorAll('.story__carousel .story__slide')].map((slide) => slide.classList.contains('is-active')))`,
       returnByValue: true,
     });
-    assert.deepEqual(JSON.parse(activePhotoResult.result.value), [false, true], 'el control debe mostrar la segunda foto');
+    assert.deepEqual(JSON.parse(activePhotoResult.result.value), [false, true], 'un clic físico en la flecha debe mostrar la segunda foto');
 
     const verticalPhotoResult = await cdp.send('Runtime.evaluate', {
       expression: `(() => ({
@@ -545,10 +644,14 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     const teamSectionResult = await cdp.send('Runtime.evaluate', {
       expression: `JSON.stringify((() => {
         const section = document.querySelector('.team-section');
+        const carousel = section?.querySelector('.team-carousel');
+        const bounds = carousel?.getBoundingClientRect();
         return {
           title: section?.querySelector('h2')?.textContent.trim(),
           copy: section?.querySelector('p')?.textContent.trim(),
           photos: [...(section?.querySelectorAll('.team-carousel img') || [])].map((image) => image.getAttribute('src')),
+          fit: carousel && getComputedStyle(carousel.querySelector('img')).objectFit,
+          ratio: bounds && Math.round(bounds.width / bounds.height * 100) / 100,
         };
       })())`,
       returnByValue: true,
@@ -557,7 +660,17 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
       title: 'Nuestro equipo',
       copy: 'Hoy contamos con dos puestos de trabajo y seguimos creciendo para llevar PizzPlass a más celebraciones.',
       photos: ['/assets/Equipo/Equipo1.jpeg', '/assets/Equipo/Equipo2.jpeg'],
-    }, 'la página Nosotros debe incluir el equipo y todas sus fotos antes de Instagram');
+      fit: 'cover',
+      ratio: .8,
+    }, 'la página Nosotros debe incluir el equipo y encuadrar todas sus fotos antes de Instagram');
+
+    await cdp.send('Runtime.evaluate', {
+      expression: `(() => { const carousel = document.querySelector('.team-carousel'); carousel.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 2, pointerType: 'mouse', clientX: 300 })); carousel.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 2, pointerType: 'mouse', clientX: 100 })); })()`,
+    });
+    assert.deepEqual(JSON.parse((await cdp.send('Runtime.evaluate', {
+      expression: `JSON.stringify([...document.querySelectorAll('.team-carousel .story__slide')].map(slide => slide.classList.contains('is-active')))`,
+      returnByValue: true,
+    })).result.value), [false, true], 'arrastrar con el ratón debe mostrar la foto siguiente');
   });
 
   await t.test('muestra la hacienda en Inicio y abre las fotos de las pizzas en móvil', async () => {
@@ -703,21 +816,12 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     assert.doesNotMatch(identity.structuredData, /Palomares del Río/i, 'los datos SEO no deben publicar Palomares del Río');
     assert.match(identity.structuredData, /España/i, 'los datos SEO deben indicar España como zona de servicio');
 
-    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/eventos.html' });
-    await waitForApp(cdp);
-    const serviceResult = await cdp.send('Runtime.evaluate', {
-      expression: `document.querySelector('.location')?.innerText`,
-      returnByValue: true,
-    });
-    assert.match(serviceResult.result.value, /mínimo(?: de)? 48 horas de fermentación/i, 'Eventos debe explicar la preparación de la masa en el obrador');
-    assert.match(serviceResult.result.value, /ingredientes.*horneado final.*directo/is, 'Eventos debe explicar el acabado en directo');
-    assert.match(serviceResult.result.value, /cualquier punto de España/i, 'Eventos debe comunicar la cobertura nacional');
   });
 
   await t.test('centra los inicios de sección en todas las páginas sin centrar el contenido de las tarjetas', async () => {
     const routes = [
       ['/', ['.home-hero__copy h1', '.section-heading h2', '.experience h2', '.cta h2']],
-      ['/eventos.html', ['.page-hero h1', '.events-gallery h2', '.section-heading h2', '.menu-block h2', '.location h2', '.cta h2']],
+      ['/eventos.html', ['.page-hero h1', '.events-gallery h2', '.section-heading h2', '.menu-block h2', '.cta h2']],
       ['/nosotros.html', ['.page-hero h1', '.story h2', '.social-panel h2', '.cta h2']],
       ['/blog.html', ['.page-hero h1', '.cta h2']],
       ['/blog/pizza-napolitana-autentica.html', ['.article-page h1', '.article-page__cta h2']],
@@ -745,7 +849,6 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
 
         const splitEyebrow = {
           '/nosotros.html': '.story > div:last-child > .eyebrow',
-          '/eventos.html': '.location > div > .eyebrow',
           '/contacto.html': '.contact-layout aside > .eyebrow',
         }[route];
         if (splitEyebrow) {

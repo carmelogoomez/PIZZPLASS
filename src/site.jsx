@@ -9,6 +9,7 @@ import carbonaraPhoto from '../assets/Pizza Carbonara.png';
 import { articleBySlug, articles } from './articles';
 import SmokeBackground from './SmokeBackground';
 import BudgetForm from './BudgetForm';
+import SocialIcon from './SocialIcon';
 
 export const whatsapp = `https://wa.me/34675264967?text=${encodeURIComponent('¡Hola PizzPlass! Quiero información para un evento.')}`;
 const instagram = 'https://www.instagram.com/pizzplass_pizzas/';
@@ -39,15 +40,36 @@ function useSeo(title, description, path = '') {
   }, [title, description, path]);
 }
 
+function socialPlatform(href) {
+  if (href.includes('wa.me')) return 'whatsapp';
+  if (href.includes('instagram.com')) return 'instagram';
+  if (href.includes('tiktok.com')) return 'tiktok';
+  return '';
+}
+
 function Button({ href, children, variant = 'primary', external = false, className = '' }) {
-  return <a className={`button button--${variant} ${className}`} href={href} {...(external ? { target: '_blank', rel: 'noopener' } : {})}>{children}</a>;
+  const platform = socialPlatform(href);
+  return <a className={`button button--${variant}${platform === 'whatsapp' ? ' button--whatsapp' : ''} ${className}`} href={href} {...(external ? { target: '_blank', rel: 'noopener' } : {})}>{platform && <SocialIcon platform={platform} />}{children}</a>;
 }
 
 function PhotoCarousel({ photos, label, caption, className = '' }) {
   const [activePhoto, setActivePhoto] = useState(0);
+  const dragStart = useRef(null);
   if (!photos.length) return null;
   const showPhoto = (offset) => setActivePhoto((current) => (current + offset + photos.length) % photos.length);
-  return <div className={`photo-carousel ${className}`} aria-label={label}><div className="photo-carousel__slides story__slides">{photos.map(([src, alt], index) => <figure className={`photo-carousel__slide story__slide ${index === activePhoto ? 'is-active' : ''}`} key={src} aria-hidden={index !== activePhoto}><img src={src} alt={alt} /></figure>)}</div>{caption && <span className="photo-carousel__caption story__caption">{caption}</span>}<div className="photo-carousel__controls story__controls"><button type="button" aria-label="Ver foto anterior" onClick={() => showPhoto(-1)}>←</button><div className="photo-carousel__dots story__dots" aria-label="Selector de fotos">{photos.map(([, alt], index) => <button type="button" className={index === activePhoto ? 'is-active' : ''} aria-label={`Ver foto ${index + 1}`} aria-pressed={index === activePhoto} onClick={() => setActivePhoto(index)} key={alt} />)}</div><button type="button" aria-label="Ver siguiente foto" onClick={() => showPhoto(1)}>→</button></div></div>;
+  const startDrag = (event) => {
+    if (event.target.closest?.('button')) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    dragStart.current = { id: event.pointerId, x: event.clientX };
+    try { event.currentTarget.setPointerCapture(event.pointerId); } catch {}
+  };
+  const finishDrag = (event) => {
+    if (!dragStart.current || dragStart.current.id !== event.pointerId) return;
+    const distance = event.clientX - dragStart.current.x;
+    dragStart.current = null;
+    if (Math.abs(distance) >= 45) showPhoto(distance < 0 ? 1 : -1);
+  };
+  return <div className={`photo-carousel ${className}`} aria-label={label} onPointerDown={startDrag} onPointerUp={finishDrag} onPointerCancel={() => { dragStart.current = null; }}><div className="photo-carousel__slides story__slides">{photos.map(([src, alt], index) => <figure className={`photo-carousel__slide story__slide ${index === activePhoto ? 'is-active' : ''}`} key={src} aria-hidden={index !== activePhoto}><img src={src} alt={alt} draggable="false" /></figure>)}</div>{caption && <span className="photo-carousel__caption story__caption">{caption}</span>}<div className="photo-carousel__controls story__controls"><button type="button" aria-label="Ver foto anterior" onClick={() => showPhoto(-1)}>←</button><div className="photo-carousel__dots story__dots" aria-label="Selector de fotos">{photos.map(([, alt], index) => <button type="button" className={index === activePhoto ? 'is-active' : ''} aria-label={`Ver foto ${index + 1}`} aria-pressed={index === activePhoto} onClick={() => setActivePhoto(index)} key={alt} />)}</div><button type="button" aria-label="Ver siguiente foto" onClick={() => showPhoto(1)}>→</button></div></div>;
 }
 
 function Header() {
@@ -66,10 +88,10 @@ function Header() {
 
 function Footer() {
   return <><footer className="footer"><div className="shell footer__grid">
-    <div><a className="brand brand--footer" href="/index.html"><img src={logo} alt="PizzPlass" /><span><strong>PizzPlass</strong><small>Pizza experiences</small></span></a><p>Pizza napolitana elaborada al momento para eventos en toda España.</p><div className="socials"><a href={instagram} target="_blank" rel="noopener" aria-label="Instagram">◎</a><a href="https://www.tiktok.com/@pizzplass.pizzas" target="_blank" rel="noopener" aria-label="TikTok">♪</a><a href={whatsapp} target="_blank" rel="noopener" aria-label="WhatsApp">◉</a></div></div>
+    <div><a className="brand brand--footer" href="/index.html"><img src={logo} alt="PizzPlass" /><span><strong>PizzPlass</strong><small>Pizza experiences</small></span></a><p>Pizza napolitana elaborada al momento para eventos en toda España.</p><div className="socials"><a href={instagram} target="_blank" rel="noopener" aria-label="Instagram"><SocialIcon platform="instagram" /></a><a href="https://www.tiktok.com/@pizzplass.pizzas" target="_blank" rel="noopener" aria-label="TikTok"><SocialIcon platform="tiktok" /></a><a className="socials__whatsapp" href={whatsapp} target="_blank" rel="noopener" aria-label="WhatsApp"><SocialIcon platform="whatsapp" /></a></div></div>
     <div><h3>Descubre</h3><a href="/nosotros.html">Quiénes somos</a><a href="/eventos.html">Eventos</a><a href="/blog.html">Historias del horno</a></div>
     <div><h3>Contacto</h3><a href={whatsapp} target="_blank" rel="noopener">675 26 49 67</a><a href="mailto:pizzplasspizzas@gmail.com">pizzplasspizzas@gmail.com</a><span>Sevilla · Servicio en toda España</span></div>
-  </div><div className="shell footer__bottom">© {new Date().getFullYear()} PizzPlass · Hecho con fuego, harina e ilusión.</div></footer><a className="whatsapp" href={whatsapp} target="_blank" rel="noopener"><span>◉</span><b>WhatsApp</b></a></>;
+  </div><div className="shell footer__bottom">© {new Date().getFullYear()} PizzPlass · Hecho con fuego, harina e ilusión.</div></footer><a className="whatsapp" href={whatsapp} target="_blank" rel="noopener" aria-label="Abrir WhatsApp"><SocialIcon platform="whatsapp" /><b>WhatsApp</b></a></>;
 }
 
 function Layout({ children, immersive = false }) {
@@ -89,7 +111,6 @@ export function Home() {
   return <Layout immersive><div className="home-page"><section className="home-hero"><div className="shell home-hero__grid"><div className="home-hero__copy"><Eyebrow>Pizza napolitana · eventos en toda España</Eyebrow><h1>El horno llega.<br/><em>La fiesta empieza.</em></h1><p>Terminamos y horneamos cada pizza delante de tus invitados: masa lenta, ingredientes cuidados y ese punto de espectáculo que se recuerda.</p><div className="hero-actions"><Button href="/contacto.html">Solicita presupuesto <span>→</span></Button><Button href={whatsapp} variant="quiet" external>Hablemos por WhatsApp</Button></div><div className="trust-row"><span><b>48 h</b> de fermentación</span><span><b>450 °C</b> de horno</span><span><b>A medida</b> para cada evento</span></div></div><div className="hero-visual" aria-label="PizzPlass en una hacienda para eventos"><div className="hero-visual__halo"></div><div className="hero-visual__card"><img src={haciendaPhoto} alt="Rótulo de PizzPlass en el césped de una hacienda con mesas de celebración y piscina" fetchPriority="high" /></div><span className="hero-visual__note note--one">🔥 Al momento</span><span className="hero-visual__note note--two">📍 Desde Sevilla</span></div></div></section>
     <section className="section" id="eventos"><div className="shell"><div className="section-heading"><div><Eyebrow>Tu ocasión, nuestro horno</Eyebrow><h2>Hay muchas formas de celebrar.<br/>Todas mejoran con pizza.</h2></div><a className="arrow-link" href="/eventos.html">Ver todos los servicios →</a></div><div className="occasion-grid">{eventTypes.map(([icon, title, href]) => <a href={href} className="occasion" key={title}><span>{icon}</span><strong>{title}</strong><small>Descubrir →</small></a>)}</div><p className="occasion-callout">¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!</p></div></section>
     <section className="section section--ink"><div className="shell experience"><div><Eyebrow>Esto no es solo catering</Eyebrow><h2>El aroma, el fuego y la primera pizza saliendo del horno.</h2></div><div className="experience__copy"><p>Montamos un rincón napolitano dentro de tu evento. Tus invitados ven cómo nace cada pizza y la disfrutan recién hecha.</p><ul><li>Montaje y recogida incluidos</li><li>Carta adaptada a tu celebración</li><li>Servicio cercano de Leo y Juan Antonio</li></ul><Button href="/nosotros.html" variant="light">Conoce PizzPlass</Button></div></div></section>
-    <section className="section"><div className="shell"><div className="section-heading"><div><Eyebrow>Sin complicaciones</Eyebrow><h2>De tu idea al primer bocado</h2></div></div><div className="process">{[['01','Cuéntanos el plan','Fecha, lugar e invitados.'],['02','Recibe tu propuesta','Te enviamos una opción a medida.'],['03','Disfruta del evento','Nosotros montamos, cocinamos y recogemos.']].map(([n,t,p]) => <div className="process__item" key={n}><span>{n}</span><h3>{t}</h3><p>{p}</p></div>)}</div></div></section>
     <Cta title="Tu próxima celebración puede oler a Nápoles" />
   </div></Layout>;
 }
@@ -155,14 +176,14 @@ export function Events() {
     <PageHero eyebrow="Servicios" title="Un formato diferente para eventos que quieren sorprender">Montamos, horneamos y servimos. Tú solo tienes que disfrutar.</PageHero>
     <section className="section section--soft"><div className="shell events-gallery"><div><Eyebrow>Así se vive PizzPlass</Eyebrow><h2>Pizza recién hecha, gente disfrutando</h2></div><PhotoCarousel photos={eventPhotos} label="Fotos de eventos PizzPlass" caption="PizzPlass en acción" className="events-carousel" /></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><Eyebrow>Tu ocasión, nuestro horno</Eyebrow><h2>Celebraciones a tu manera</h2></div></div><div className="occasion-grid">{eventTypes.map(([icon, title]) => <a href="/contacto.html" className="occasion" key={title}><span>{icon}</span><strong>{title}</strong><small>Consultar disponibilidad →</small></a>)}</div><p className="occasion-callout">¿Quieres vivir la experiencia? Contacta con nosotros sin compromiso!</p></div></section>
-    <section className="section section--soft"><div className="shell"><div className="section-heading"><div><Eyebrow>Cómo trabajamos</Eyebrow><h2>Todo preparado para que tú no te ocupes de nada</h2></div></div><div className="process process--four">{[['01','Hablamos','Fecha, lugar e invitados.'],['02','Llegamos','Montamos con antelación.'],['03','Horneamos','Cada pizza, delante de vosotros.'],['04','Recogemos','Dejamos el espacio listo.']].map(([n,t,p])=><div className="process__item" key={n}><span>{n}</span><h3>{t}</h3><p>{p}</p></div>)}</div></div></section>
     <section className="section"><div className="shell menu-block"><div><Eyebrow>Una muestra de la carta</Eyebrow><h2>Clásicos y sorpresas</h2><p>La Especial PizzPlass es una sorpresa diferente en cada evento.</p></div><div><div className="pizza-list">{pizzas.map((pizza) => {
       const content = <><span className={`pizza-icon${pizza.name === 'Pepperoni' ? ' pizza-icon--pepperoni' : ''}${!pizza.photo ? ' pizza-icon--special' : ''}`} aria-hidden="true">{pizza.icon}</span><span className="pizza-card__text"><h3>{pizza.name}</h3>{pizza.photo && <small>Ver foto</small>}</span></>;
       return pizza.photo
         ? <button type="button" className="pizza-card pizza-card--interactive" key={pizza.name} onClick={(event) => openPizza(pizza, event)} aria-label={`Ver foto de la pizza ${pizza.name}`}>{content}</button>
         : <div className="pizza-card" key={pizza.name}>{content}</div>;
     })}</div><div className="pizza-notes"><p>Posibilidad de pizzas sin gluten, sin lactosa y para otras intolerancias. Consúltanos con antelación.</p><p>También puedes sugerirnos pizzas personalizadas a tu gusto.</p></div></div></div></section>
-    <section className="section section--ink"><div className="shell location"><span className="location__pin">⌖</span><div><Eyebrow>Del obrador a tu evento</Eyebrow><h2>Desde Sevilla, a cualquier punto de España</h2><p>Preparamos la masa en nuestro obrador con un mínimo de 48 horas de fermentación. En el evento añadimos los ingredientes y hacemos el horneado final en directo para servir cada pizza recién hecha.</p></div><Button href="/contacto.html" variant="light">Consulta tu localidad</Button></div></section><Cta />
+    <section className="section section--soft"><div className="shell"><div className="section-heading"><div><Eyebrow>Cómo trabajamos</Eyebrow><h2>Todo preparado para que tú no te ocupes de nada</h2></div></div><div className="process process--four">{[['1','Nos cuentas tu idea','Hablamos sobre la fecha, el lugar, los invitados y el ambiente que quieres crear.'],['2','Preparamos cada detalle','Organizamos el montaje y llegamos con tiempo para tener el puesto listo antes de empezar.'],['3','Horneamos en directo','Terminamos cada pizza ante tus invitados y la servimos recién salida del horno.'],['4','Recogemos al terminar','Desmontamos nuestro espacio y dejamos la zona preparada para que tú sigas disfrutando.']].map(([n,t,p])=><div className="process__item" key={n}><span>{n}</span><h3>{t}</h3><p>{p}</p></div>)}</div></div></section>
+    <Cta />
     {activePizza && createPortal(<div className={`pizza-modal${isClosingPizza ? ' is-closing' : ''}`} role="dialog" aria-modal="true" aria-label={`Foto de la pizza ${activePizza.name}`} onClick={(event) => { if (event.target === event.currentTarget) closePizza(); }}><div className="pizza-modal__panel"><button className="pizza-modal__close" type="button" ref={closeButtonRef} onClick={closePizza} aria-label="Cerrar foto">×</button><img src={activePizza.photo} alt={`Pizza ${activePizza.name}`} /></div></div>, document.body)}
   </Layout>;
 }
@@ -200,7 +221,7 @@ export function Article({ slug }) {
 
 export function Contact() {
   useSeo('Contacto — Pide presupuesto | PizzPlass', 'Solicita presupuesto para llevar PizzPlass a tu evento.', 'contacto.html');
-  return <Layout><PageHero eyebrow="Hablemos de tu evento" title="Cuéntanos el plan. Nosotros ponemos el horno.">Normalmente respondemos en menos de 24 horas.</PageHero><section className="section"><div className="shell contact-layout"><aside><Eyebrow>Contacto directo</Eyebrow><h2>Estamos a un mensaje</h2><p>Si aún no tienes todos los detalles, no pasa nada. Cuéntanos lo que sabes y lo vemos contigo.</p><div className="contact-options"><a href={whatsapp} target="_blank" rel="noopener"><span>◉</span><div><small>WhatsApp</small><strong>675 26 49 67</strong></div></a><a href="mailto:pizzplasspizzas@gmail.com"><span>✉</span><div><small>Email</small><strong>pizzplasspizzas@gmail.com</strong></div></a><a href={instagram} target="_blank" rel="noopener"><span>◎</span><div><small>Instagram</small><strong>@pizzplass_pizzas</strong></div></a></div><div className="tip"><span>💡</span><p><strong>Para afinar:</strong> fecha, lugar e invitados son los tres datos que más nos ayudan.</p></div></aside><BudgetForm eventTypes={eventTypes.map(([, title]) => title)} /></div></section></Layout>;
+  return <Layout><PageHero eyebrow="Hablemos de tu evento" title="Cuéntanos el plan. Nosotros ponemos el horno.">Normalmente respondemos en menos de 24 horas.</PageHero><section className="section"><div className="shell contact-layout"><BudgetForm eventTypes={eventTypes.map(([, title]) => title)} /><div className="tip contact-tip"><span>💡</span><p><strong>Para afinar:</strong> fecha, lugar e invitados son los tres datos que más nos ayudan.</p></div><aside><Eyebrow>Contacto directo</Eyebrow><h2>Estamos a un mensaje</h2><p>Si aún no tienes todos los detalles, no pasa nada. Cuéntanos lo que sabes y lo vemos contigo.</p><div className="contact-options"><a className="contact-option--whatsapp" href={whatsapp} target="_blank" rel="noopener"><span><SocialIcon platform="whatsapp" /></span><div><small>WhatsApp</small><strong>675 26 49 67</strong></div></a><a href="mailto:pizzplasspizzas@gmail.com"><span>✉</span><div><small>Email</small><strong>pizzplasspizzas@gmail.com</strong></div></a><a href={instagram} target="_blank" rel="noopener"><span><SocialIcon platform="instagram" /></span><div><small>Instagram</small><strong>@pizzplass_pizzas</strong></div></a></div></aside></div></section></Layout>;
 }
 
 function NotFound() { useSeo('Página no encontrada | PizzPlass', 'La página solicitada no existe.'); return <Layout><PageHero eyebrow="404" title="Esta pizza no estaba en la carta">Vuelve al inicio y seguimos desde allí.</PageHero><section className="section center"><Button href="/index.html">Volver al inicio</Button></section></Layout>; }
