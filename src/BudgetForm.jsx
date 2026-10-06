@@ -33,10 +33,8 @@ export function budgetWhatsapp(form) {
 export default function BudgetForm({ eventTypes }) {
   const [form, setForm] = useState(emptyForm);
   const [step, setStep] = useState(0);
-  const [status, setStatus] = useState('');
-  const [sending, setSending] = useState(false);
+  const [status, setStatus] = useState(() => new URLSearchParams(window.location.search).get('enviado') === '1' ? 'ok' : '');
   const fieldRef = useRef(null);
-  const sendingRef = useRef(false);
   const headingRef = useRef(null);
   const last = step === fields.length - 1;
   const field = fields[step];
@@ -74,38 +72,21 @@ export default function BudgetForm({ eventTypes }) {
     return municipalities[form.provincia]?.includes(form.localidad);
   }
 
-  async function submit(event) {
-    event.preventDefault();
-    if (sendingRef.current || !validate()) return;
-    if (!last) { setStep(current => current + 1); return; }
-    if (!validDate()) { setStep(4); return; }
-    if (!validLocation()) { setStep(5); return; }
-    if (form._honey) return;
-    sendingRef.current = true;
-    setSending(true);
-    setStatus('');
-    try {
-      const response = await fetch('https://formsubmit.co/ajax/pizzplasspizzas@gmail.com', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ ...form, _subject: 'Nueva solicitud de presupuesto — PizzPlass', _template: 'table', _captcha: 'false' }),
-      });
-      const result = await response.json();
-      if (!response.ok || !(result.success === true || result.success === 'true')) throw new Error('Envío rechazado');
-      setStatus('ok');
-      setForm(emptyForm);
-      setStep(0);
-    } catch {
-      setStatus('error');
-    } finally {
-      sendingRef.current = false;
-      setSending(false);
+  function submit(event) {
+    if (!validate()) { event.preventDefault(); return; }
+    if (!last) {
+      event.preventDefault();
+      setStep(current => current + 1);
+      return;
     }
+    if (!validDate()) { event.preventDefault(); setStep(4); return; }
+    if (!validLocation()) { event.preventDefault(); setStep(5); return; }
+    if (form._honey) event.preventDefault();
   }
 
   const common = {
     ref: fieldRef, id: 'budget-' + field.name, name: field.name, value: form[field.name],
-    onChange: update, required: !last, disabled: sending, 'aria-describedby': 'budget-help',
+    onChange: update, required: !last, 'aria-describedby': 'budget-help',
   };
 
   if (status === 'ok') return <div className="budget-form budget-success" role="status">
@@ -114,7 +95,13 @@ export default function BudgetForm({ eventTypes }) {
     <button className="button button--primary" onClick={() => setStatus('')}>Preparar otro presupuesto</button>
   </div>;
 
-  return <form className="budget-form budget-wizard" onSubmit={submit}>
+  return <form className="budget-form budget-wizard" action="https://formsubmit.co/pizzplasspizzas@gmail.com" method="POST" onSubmit={submit}>
+    {fields.filter(({ name }) => name !== field.name).map(({ name }) => <input key={name} type="hidden" name={name} value={form[name]} />)}
+    <input type="hidden" name="_subject" value="Nueva solicitud de presupuesto — PizzPlass" />
+    <input type="hidden" name="_template" value="table" />
+    <input type="hidden" name="_captcha" value="true" />
+    <input type="hidden" name="_next" value="https://pizzplass.es/contacto.html?enviado=1" />
+    <input type="hidden" name="_url" value="https://pizzplass.es/contacto.html" />
     <div className="form-heading"><span>Presupuesto sin compromiso</span></div>
     <div className="budget-progress-label" aria-live="polite"><span>Paso {step + 1} de {fields.length}</span><span>{Math.round((step + 1) / fields.length * 100)} %</span></div>
     <progress className="budget-progress" value={step + 1} max={fields.length} aria-label="Progreso del formulario" />
@@ -129,11 +116,11 @@ export default function BudgetForm({ eventTypes }) {
       <small id="budget-help">{last ? 'Opcional. Puedes contarnos los detalles que quieras.' : field.name === 'localidad' ? 'Localidades de ' + form.provincia + '. Elige el municipio donde se celebrará el evento.' : 'Este campo es necesario para preparar tu propuesta.'}</small>
     </div>
     <div className="budget-actions">
-      {step > 0 && <button type="button" className="button budget-back" disabled={sending} onClick={() => { setStep(current => current - 1); setStatus(''); }}>← Volver</button>}
+      {step > 0 && <button type="button" className="button budget-back" onClick={() => { setStep(current => current - 1); setStatus(''); }}>← Volver</button>}
       {!last ? <button type="submit" className="button button--primary budget-next">Siguiente →</button> : <div className="budget-final">
-        <button type="submit" className="button button--primary" disabled={sending}>{sending ? 'Enviando…' : 'Solicitar presupuesto'}</button>
-        <a className="button budget-whatsapp" href={budgetWhatsapp(form)} target="_blank" rel="noopener noreferrer" aria-disabled={sending} onClick={event => {
-          if (sending || !validate() || !validDate() || !validLocation() || form._honey) {
+        <button type="submit" className="button button--primary">Solicitar presupuesto</button>
+        <a className="button budget-whatsapp" href={budgetWhatsapp(form)} target="_blank" rel="noopener noreferrer" onClick={event => {
+          if (!validate() || !validDate() || !validLocation() || form._honey) {
             event.preventDefault();
             if (!validDate()) setStep(4);
             else if (!validLocation()) setStep(5);

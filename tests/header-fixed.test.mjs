@@ -205,38 +205,28 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     assert.equal(link.pathname, '/34675264967');
     const message = link.searchParams.get('text');
     for (const value of [...Object.values(answers).filter(v=>v!=='2027-06-12'), '12/06/2027', 'Provincia: Madrid', 'Pueblo/Localidad: Madrid', '450', 'opciones sin lactosa']) assert.ok(message.includes(value), value);
-    // Intercept the external boundary only: never send a real request during tests.
-    await evaluate(`window.__requests=[]; window.fetch=async(url,options)=>{
-      window.__requests.push({url,body:JSON.parse(options.body)});
-      return {ok:true,json:async()=>({success:false})};
-    }`);
+    // Intercept the browser navigation only: never send a real request during tests.
+    await evaluate(`(() => {
+      window.__fetchCount = 0;
+      window.fetch = async () => { window.__fetchCount += 1; throw new Error('No debe usarse AJAX'); };
+      const form = document.querySelector('.budget-wizard');
+      window.__submission = null;
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        window.__submission = Object.fromEntries(new FormData(form));
+      }, { capture: true, once: true });
+    })()`);
     await next();
-    for(let attempt=0;attempt<30 && !(await evaluate("Boolean(document.querySelector('[role=alert]'))"));attempt++) await new Promise(r=>setTimeout(r,30));
-    assert.equal(await current(), 'mensaje', 'un rechazo conserva las respuestas');
-    assert.equal(await evaluate("document.querySelector('[name=mensaje]').value"), 'Celebración de prueba, opciones sin lactosa.');
-    await evaluate(`window.fetch=async(url,options)=>{
-      window.__requests.push({url,body:JSON.parse(options.body)});
-      return {ok:true,json:async()=>({success:'true'})};
-    }`);
-    await next();
-    for(let attempt=0;attempt<30 && !(await evaluate("Boolean(document.querySelector('.budget-success'))"));attempt++) await new Promise(r=>setTimeout(r,30));
-    assert.equal(await evaluate("Boolean(document.querySelector('.budget-success'))"), true);
-    const requests = await evaluate("window.__requests");
-    assert.equal(requests.length,2);
-    assert.equal(requests[1].url,'https://formsubmit.co/ajax/pizzplasspizzas@gmail.com');
-    assert.deepEqual(requests[1].body, {...answers, provincia:'Madrid', localidad:'Madrid', invitados:'450', mensaje:'Celebración de prueba, opciones sin lactosa.', _honey:'', _subject:'Nueva solicitud de presupuesto — PizzPlass', _template:'table', _captcha:'false'});
-
-    await evaluate("document.querySelector('.budget-success button').click()");
-    const secondAnswers = ['Otra persona', 'otra@example.com', '600987654', 'Cumpleaños', '2027-07-12', 'Sevilla', 'Sevilla', '30'];
-    for (const value of secondAnswers) { await fill(value); await next(); }
-    assert.equal(await current(), 'mensaje');
-    assert.equal(await evaluate("document.querySelector('[name=mensaje]').required"), false);
-    assert.equal(await evaluate("document.querySelector('.budget-step label').textContent.includes('*')"), false);
-    assert.equal(await evaluate("new URL(document.querySelector('.budget-whatsapp').href).searchParams.get('text').includes('Cuéntanos algo más:')"), false);
-    await next();
-    for(let attempt=0;attempt<30 && !(await evaluate("Boolean(document.querySelector('.budget-success'))"));attempt++) await new Promise(r=>setTimeout(r,30));
-    assert.equal(await evaluate("Boolean(document.querySelector('.budget-success'))"), true, 'el último campo vacío permite enviar');
-    assert.equal((await evaluate("window.__requests"))[2].body.mensaje, '');
+    const submission = await evaluate("window.__submission");
+    assert.equal(await evaluate("window.__fetchCount"), 0, 'el envío protegido no debe saltarse el CAPTCHA mediante AJAX');
+    assert.equal(await evaluate("document.querySelector('.budget-wizard').method"), 'post');
+    assert.equal(await evaluate("document.querySelector('.budget-wizard').action"), 'https://formsubmit.co/pizzplasspizzas@gmail.com');
+    assert.deepEqual(submission, {
+      ...answers,
+      provincia: 'Madrid', localidad: 'Madrid', invitados: '450', mensaje: 'Celebración de prueba, opciones sin lactosa.',
+      _honey: '', _subject: 'Nueva solicitud de presupuesto — PizzPlass', _template: 'table', _captcha: 'true',
+      _next: 'https://pizzplass.es/contacto.html?enviado=1', _url: 'https://pizzplass.es/contacto.html',
+    });
   });
 
   await t.test('ordena formulario, ayuda y contacto, compacta el paso y presenta las redes con su identidad', async () => {
