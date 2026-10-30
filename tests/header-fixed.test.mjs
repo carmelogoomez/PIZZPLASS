@@ -142,6 +142,29 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     }
   });
 
+  await t.test('oculta el WhatsApp flotante solo cuando hay otro botón verde visible', async () => {
+    await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 600, deviceScaleFactor: 1, mobile: true });
+    await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/colaboradores.html' });
+    await waitForApp(cdp);
+    const evaluate = async expression => (await cdp.send('Runtime.evaluate', { expression, returnByValue: true })).result.value;
+    const expectFloating = async visible => {
+      for (let attempt = 0; attempt < 30; attempt++) {
+        if (await evaluate("Boolean(document.querySelector('.whatsapp')?.getClientRects().length)") === visible) return;
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+      assert.fail(`el WhatsApp flotante debe estar ${visible ? 'visible' : 'oculto'}`);
+    };
+    await expectFloating(true);
+    await evaluate("document.querySelector('.collaborators-commission .button--whatsapp').scrollIntoView({block:'center',behavior:'instant'})");
+    await expectFloating(false);
+    await evaluate("window.scrollTo({top:0,behavior:'instant'})");
+    await expectFloating(true);
+    await evaluate("document.querySelector('.socials__whatsapp').scrollIntoView({block:'center',behavior:'instant'})");
+    await expectFloating(false);
+    await evaluate("window.scrollTo({top:0,behavior:'instant'})");
+    await expectFloating(true);
+  });
+
   await t.test('el presupuesto avanza, filtra localidades y entrega todos los datos por correo o WhatsApp', async () => {
     await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/contacto.html' });
@@ -166,6 +189,7 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     for (const [name, value] of Object.entries(answers)) {
       assert.equal(await current(), name);
       if (name === 'email') { await fill('correo-incorrecto'); await next(); assert.equal(await current(), 'email'); }
+      if (name === 'telefono') { await fill('abc+34 600-123.456eE'); assert.equal(await evaluate("document.querySelector('[name=telefono]').value"), '34600123456', 'el teléfono conserva solo dígitos al introducir o pegar texto'); }
       if (name === 'fecha') {
         const dates = await evaluate(`(() => { const today = new Date(); const format = date => [date.getFullYear(), String(date.getMonth() + 1).padStart(2, '0'), String(date.getDate()).padStart(2, '0')].join('-'); const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1); return { today: format(today), yesterday: format(yesterday), min: document.querySelector('[name=fecha]').min }; })()`);
         assert.equal(dates.min, dates.today, 'la fecha mínima debe ser el día actual');
@@ -197,10 +221,21 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     assert.equal(await evaluate("document.querySelector('[name=localidad]').value"), '', 'cambiar provincia borra localidad');
     assert.equal(await evaluate("[...document.querySelector('[name=localidad]').options].some(o=>o.value==='Dos Hermanas')"), false);
     await fill('Madrid'); await next();
-    await fill('450'); await next();
+    await fill('eE+-.,'); assert.equal(await evaluate("document.querySelector('[name=invitados]').value"), '');
+    await fill('0'); await next(); assert.equal(await current(), 'invitados', 'el número de invitados debe ser positivo');
+    await fill('4e5E0'); assert.equal(await evaluate("document.querySelector('[name=invitados]').value"), '450', 'los invitados solo admiten dígitos, sin notación científica');
+    await next();
     await fill('Celebración de prueba, opciones sin lactosa.');
     assert.equal(await evaluate("Boolean(document.querySelector('.budget-next'))"), false);
     assert.equal(await evaluate("document.querySelector('progress').value"), 9);
+    await evaluate("document.querySelector('.budget-whatsapp').scrollIntoView({block:'center',behavior:'instant'})");
+    for (let attempt = 0; attempt < 30 && !await evaluate("document.querySelector('.whatsapp').hidden"); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(await evaluate("document.querySelector('.whatsapp').hidden"), true, 'detecta el botón de WhatsApp que aparece en el último paso');
+    await back();
+    await evaluate("window.scrollTo({top:0,behavior:'instant'})");
+    for (let attempt = 0; attempt < 30 && await evaluate("document.querySelector('.whatsapp').hidden"); attempt++) await new Promise(resolve => setTimeout(resolve, 50));
+    assert.equal(await evaluate("document.querySelector('.whatsapp').hidden"), false, 'reaparece al retirar el botón del formulario y salir del contacto visible');
+    await next();
     const link = new URL(await evaluate("document.querySelector('.budget-whatsapp').href"));
     assert.equal(link.pathname, '/34675264967');
     const message = link.searchParams.get('text');
@@ -546,9 +581,9 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
       expression: `Boolean(document.querySelector('.location')) || document.body.innerText.includes('Del obrador a tu evento')`,
       returnByValue: true,
     })).result.value, false, 'Eventos no debe mostrar el bloque Del obrador a tu evento');
-    assert.deepEqual(eventsPage.pizzas, ['Prosciutto', '4 quesos', 'Pepperoni', 'Carbonara', 'Especial PizzPlass']);
+    assert.deepEqual(eventsPage.pizzas, ['Prosciutto:', '4 quesos:', 'Pepperoni:', 'Carbonara:', 'Especial PizzPlass:']);
     assert.match(eventsPage.notes.join(' '), /sin gluten.*sin lactosa.*intolerancias/i);
-    assert.match(eventsPage.notes.join(' '), /pizzas personalizadas/i);
+    assert.doesNotMatch(eventsPage.notes.join(' '), /pizzas personalizadas/i);
 
     await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/nosotros.html' });
     await waitForApp(cdp);
@@ -561,9 +596,9 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     });
     assert.equal(teamPhotosResult.exceptionDetails, undefined, 'la lectura de las fotos del equipo no debe producir errores');
     assert.deepEqual(JSON.parse(teamPhotosResult.result.value), [
-      { alt: 'Leo y Juan Antonio — foto 1', src: '/assets/Nosotros/Foto1.jpeg' },
-      { alt: 'Leo y Juan Antonio — foto 2', src: '/assets/Nosotros/Foto2.jpeg' },
-    ], 'la página Nosotros debe mostrar las dos fotos de Leo y Juan Antonio');
+      { alt: 'Equipo PizzPlass — foto 1', src: '/assets/Nosotros/Foto1.jpeg' },
+      { alt: 'Equipo PizzPlass — foto 2', src: '/assets/Nosotros/Foto2.jpeg' },
+    ], 'la página Nosotros debe mostrar las dos fotos de PizzPlass');
 
     const carouselResult = await cdp.send('Runtime.evaluate', {
       expression: `JSON.stringify((() => {
@@ -577,10 +612,10 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
       returnByValue: true,
     });
     assert.deepEqual(JSON.parse(carouselResult.result.value), {
-      caption: 'Leo & Juan Antonio',
+      caption: 'PizzPlass',
       nextLabel: 'Ver siguiente foto',
       active: [true, false],
-    }, 'las fotos del equipo deben mostrarse en un carrusel con el nombre siempre encima');
+    }, 'las fotos del equipo deben mostrarse en un carrusel con la marca siempre encima');
 
     const nextButtonBounds = (await cdp.send('Runtime.evaluate', {
       expression: `(() => { const button = document.querySelector('.story__carousel [aria-label="Ver siguiente foto"]'); button.scrollIntoView({ block: 'center', behavior: 'instant' }); const bounds = button.getBoundingClientRect(); return { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }; })()`,
@@ -683,7 +718,7 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
       returnByValue: true,
     })).result.value);
     assert.deepEqual(cards.map(({ name, clickable }) => [name, clickable]), [
-      ['Prosciutto', true], ['4 quesos', true], ['Pepperoni', true], ['Carbonara', true], ['Especial PizzPlass', false],
+      ['Prosciutto:', true], ['4 quesos:', true], ['Pepperoni:', true], ['Carbonara:', true], ['Especial PizzPlass:', false],
     ]);
     assert.notEqual(cards[0].icon, cards[1].icon, 'los iconos deben identificar cada pizza');
     assert.equal(cards[0].icon, '🐷', 'Prosciutto debe mostrar un cerdo');
@@ -810,7 +845,7 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
 
   await t.test('centra los inicios de sección en todas las páginas sin centrar el contenido de las tarjetas', async () => {
     const routes = [
-      ['/', ['.home-hero__copy h1', '.section-heading h2', '.experience h2', '.cta h2']],
+      ['/', ['.home-hero__copy h1', '.section-heading h2', '.experience h2', '.home-instagram h2']],
       ['/eventos.html', ['.page-hero h1', '.events-gallery h2', '.section-heading h2', '.menu-block h2', '.cta h2']],
       ['/nosotros.html', ['.page-hero h1', '.story h2', '.social-panel h2', '.cta h2']],
       ['/blog.html', ['.page-hero h1', '.cta h2']],

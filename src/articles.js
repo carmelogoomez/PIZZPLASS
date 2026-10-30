@@ -13,9 +13,9 @@ export const articles = [
   },
   {
     slug: 'historia-pizzplass', icon: '👨‍🍳', tone: 'green', tag: 'Historia', minutes: 3,
-    title: 'Dos hermanos, un horno y mucha ilusión',
-    excerpt: 'Cómo Leo y Juan Antonio convirtieron una idea compartida en PizzPlass.',
-    body: `<p>Detrás de PizzPlass está la historia de dos hermanos, <strong>Leo y Juan Antonio</strong>, que decidieron convertir una pasión compartida en un proyecto propio.</p><h2>La pizza como punto de encuentro</h2><p>La idea tomó forma entre conversaciones, pruebas y ganas de crear algo cercano, con ingredientes cuidados y una experiencia alrededor de la pizza.</p><blockquote>«Un día nos dimos cuenta de que hablábamos siempre de abrir algo nuestro. Así que lo hicimos.»</blockquote><h2>Del sueño al horno</h2><p>Unieron fuerzas para llevar pizza napolitana de calidad directamente a bodas, comuniones, cumpleaños y eventos.</p><h2>Lo que no cambia</h2><p>Han pasado eventos y kilos de harina, pero mantienen las mismas ganas del primer día.</p><ul><li><strong>Masa artesanal</strong> de fermentación lenta.</li><li><strong>Producto de verdad</strong>, sin atajos.</li><li><strong>Trato cercano</strong>, como en familia.</li></ul><p>Lo mejor de la historia de PizzPlass es que solo acaba de empezar.</p>`
+    title: 'Un horno, una idea y mucha ilusión',
+    excerpt: 'Cómo una pasión por la pizza napolitana se convirtió en PizzPlass.',
+    body: `<p>PizzPlass nació de una pasión por la pizza napolitana y de la ilusión de convertirla en un proyecto propio.</p><h2>La pizza como punto de encuentro</h2><p>La idea tomó forma entre conversaciones, pruebas y ganas de crear algo cercano, con ingredientes cuidados y una experiencia alrededor de la pizza.</p><blockquote>«Un día nos dimos cuenta de que hablábamos siempre de abrir algo nuestro. Así que lo hicimos.»</blockquote><h2>Del sueño al horno</h2><p>El proyecto tomó forma para llevar pizza napolitana de calidad directamente a bodas, comuniones, cumpleaños y eventos.</p><h2>Lo que no cambia</h2><p>Han pasado eventos y kilos de harina, pero en PizzPlass seguimos con las mismas ganas del primer día.</p><ul><li><strong>Masa artesanal</strong> de fermentación lenta.</li><li><strong>Producto de verdad</strong>, sin atajos.</li><li><strong>Trato cercano</strong>, como en familia.</li></ul><p>Lo mejor de la historia de PizzPlass es que solo acaba de empezar.</p>`
   },
   {
     slug: 'secretos-masa-48-horas', icon: '🌾', tone: 'amber', tag: 'Cocina', minutes: 4,

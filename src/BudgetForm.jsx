@@ -18,7 +18,7 @@ const fields = [
   { name: 'fecha', label: 'Fecha del evento', type: 'date' },
   { name: 'provincia', label: 'Provincia', type: 'select' },
   { name: 'localidad', label: 'Pueblo/Localidad', type: 'select' },
-  { name: 'invitados', label: 'Invitados aproximados', type: 'number', placeholder: 'Ej. 80' },
+  { name: 'invitados', label: 'Invitados aproximados', type: 'text', placeholder: 'Ej. 80' },
   { name: 'mensaje', label: 'Cuéntanos algo más', type: 'textarea', placeholder: 'Lugar, horario, ideas o cualquier duda' },
 ];
 
@@ -48,7 +48,11 @@ export default function BudgetForm({ eventTypes }) {
   }, [step, status]);
 
   function update(event) {
-    const { name, value } = event.target;
+    const { name } = event.target;
+    const value = name === 'telefono' || name === 'invitados'
+      ? event.target.value.replace(/[^0-9]/g, '')
+      : event.target.value;
+    if (event.target.value !== value) event.target.value = value;
     setForm(current => ({ ...current, [name]: value, ...(name === 'provincia' && value !== current.provincia ? { localidad: '' } : {}) }));
     setStatus('');
     event.target.setCustomValidity('');
@@ -91,7 +95,7 @@ export default function BudgetForm({ eventTypes }) {
 
   if (status === 'ok') return <div className="budget-form budget-success" role="status">
     <h2 ref={headingRef} tabIndex="-1">¡Solicitud recibida! 🍕</h2>
-    <p>Leo y Juan Antonio te responderán muy pronto.</p>
+    <p>El equipo de PizzPlass te responderá muy pronto.</p>
     <button className="button button--primary" onClick={() => setStatus('')}>Preparar otro presupuesto</button>
   </div>;
 
@@ -112,7 +116,7 @@ export default function BudgetForm({ eventTypes }) {
         ? <select {...common}><option value="">Elige {field.name === 'localidad' ? 'tu localidad' : 'una opción'}</option>{options.map(option => <option key={option} value={option}>{option}</option>)}</select>
         : field.type === 'textarea'
           ? <textarea {...common} placeholder={field.placeholder} maxLength={2000} />
-          : <input {...common} type={field.type} placeholder={field.placeholder} autoComplete={field.autoComplete} {...(field.type === 'date' ? { min: minimumDate } : {})} {...(field.type === 'number' ? { min: 1, step: 1, inputMode: 'numeric' } : {})} />}
+          : <input {...common} type={field.type} placeholder={field.placeholder} autoComplete={field.autoComplete} {...(field.type === 'date' ? { min: minimumDate } : {})} {...(field.name === 'telefono' ? { inputMode: 'numeric', pattern: '[0-9]+' } : {})} {...(field.name === 'invitados' ? { inputMode: 'numeric', pattern: '[0-9]*[1-9][0-9]*', title: 'Introduce un número de invitados mayor que cero.' } : {})} />}
       <small id="budget-help">{last ? 'Opcional. Puedes contarnos los detalles que quieras.' : field.name === 'localidad' ? 'Localidades de ' + form.provincia + '. Elige el municipio donde se celebrará el evento.' : 'Este campo es necesario para preparar tu propuesta.'}</small>
     </div>
     <div className="budget-actions">

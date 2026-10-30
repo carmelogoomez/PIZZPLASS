@@ -4,7 +4,7 @@ import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 const routes = [
-  'contacto.html', 'eventos.html', 'nosotros.html', 'blog.html',
+  'contacto.html', 'colaboradores.html', 'eventos.html', 'nosotros.html', 'blog.html',
   'blog/pizza-napolitana-autentica.html', 'blog/pizza-en-tu-boda.html',
   'blog/historia-pizzplass.html', 'blog/secretos-masa-48-horas.html',
   'blog/como-elegir-catering-evento.html', 'blog/horno-lena-espectaculo.html'
