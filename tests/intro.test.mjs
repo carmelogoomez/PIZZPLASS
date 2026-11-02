@@ -7,12 +7,6 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { createServer } from 'vite';
 
-test('conserva el segundo intento antes de sustituirlo', () => {
-  for (const file of ['PizzaIntro.jsx', 'pizza-scene.js', 'pizza-intro.css', 'assets/mesa.webp', 'assets/masa.webp', 'assets/tomate.webp', 'assets/mozzarella.webp', 'assets/jamon.webp', 'assets/albahaca.webp']) {
-    assert.equal(existsSync(new URL(`../IntentoIntro2/${file}`, import.meta.url)), true, `${file} debe permanecer en la copia`);
-  }
-});
-
 const browserPath = (process.platform === 'win32'
   ? ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe']
   : ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']).find(existsSync);

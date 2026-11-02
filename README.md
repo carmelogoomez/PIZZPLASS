@@ -4,8 +4,9 @@ Web de PizzPlass, catering de pizza napolitana elaborada al momento para bodas, 
 
 ## Tecnología
 
-- React 19 + Vite.
-- Una sola aplicación para portada, servicios, nosotros, blog, artículos y contacto.
+- React 19 + Vite 8.3.5.
+- La intro activa está en `src/PizzaIntro.jsx`, `src/pizza-scene.js` y `src/pizza-intro.css`, con sus imágenes en `assets/intro/`.
+- Una sola aplicación para portada, servicios, nosotros, colaboradores, blog, artículos y contacto.
 - Se conservan las URLs históricas terminadas en `.html` para no romper SEO ni enlaces existentes.
 - Formulario conectado con FormSubmit.
 - Feed de Instagram y reseñas de Google preparados mediante GitHub Actions y secretos privados.
@@ -43,6 +44,13 @@ public/
 assets/
   logo.png       Logo principal
 ```
+
+## Comprobaciones
+
+    pnpm test
+    pnpm audit
+
+Las carpetas `dist/` (vista previa compilada) y `node_modules/` (dependencias instaladas) son generadas y quedan fuera de Git.
 
 ## Publicación
 
