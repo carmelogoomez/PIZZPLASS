@@ -124,7 +124,7 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
   // Esta suite comprueba la web después de la entrada; la intro tiene su propia prueba.
   await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4175/' });
   await waitForApp(cdp);
-  await cdp.send('Runtime.evaluate', { expression: "sessionStorage.setItem('pizzplass-intro-seen', '1')" });
+  await cdp.send('Runtime.evaluate', { expression: "sessionStorage.setItem('pizzplass-logo-intro-seen', '1')" });
   t.after(async () => {
     try { await cdp.send('Browser.close'); } catch {}
     await Promise.race([browserExit, new Promise((resolve) => setTimeout(resolve, 2_000))]);
@@ -836,7 +836,7 @@ test('la navegación y la landing responden correctamente', { timeout: 45_000 },
     });
     const identity = JSON.parse(identityResult.result.value);
     assert.match(identity.heroLogo, /Pizzplass%20Hacienda\.png(?:\?|$)/, 'la portada debe usar la foto de la hacienda');
-    assert.equal(identity.favicon, '/assets/logo.png', 'el favicon debe usar logo.png');
+    assert.equal(identity.favicon, '/favicon.png', 'el favicon debe usar el símbolo sin texto');
     assert.equal(identity.socialImage, 'https://pizzplass.es/assets/logo.png', 'la imagen al compartir debe usar logo.png');
     assert.doesNotMatch(identity.structuredData, /Palomares del Río/i, 'los datos SEO no deben publicar Palomares del Río');
     assert.match(identity.structuredData, /España/i, 'los datos SEO deben indicar España como zona de servicio');

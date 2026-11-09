@@ -46,7 +46,7 @@ function cdpClient(url) {
   };
 }
 
-test('la intro original de Three.js prepara la pizza y después revela la web', { timeout: 30_000 }, async (t) => {
+test('el logo se ensambla, cubre la pantalla de masa y libera la web una vez por pestaña', { timeout: 35_000 }, async (t) => {
   assert.ok(browserPath, 'Se necesita Chrome, Edge o Chromium');
   const profile = await mkdtemp(join(tmpdir(), 'pizzplass-intro-'));
   const vite = await createServer({ server: { host: '127.0.0.1', port: 4176, strictPort: true }, logLevel: 'silent' });
@@ -59,8 +59,9 @@ test('la intro original de Three.js prepara la pizza y después revela la web', 
   const page = (await waitForJson('http://127.0.0.1:9334/json/list')).find((item) => item.type === 'page');
   const cdp = cdpClient(page.webSocketDebuggerUrl);
   await cdp.ready;
+  await cdp.send('Page.enable');
   t.after(async () => {
-    try { await cdp.send('Browser.close'); } catch {}
+    try { await Promise.race([cdp.send('Browser.close'), new Promise(resolve => setTimeout(resolve, 1000))]); } catch {}
     await Promise.race([browserExit, new Promise((resolve) => setTimeout(resolve, 2000))]);
     if (browser.exitCode === null) browser.kill();
     cdp.close();
@@ -69,90 +70,53 @@ test('la intro original de Three.js prepara la pizza y después revela la web', 
   });
 
   const read = async (expression) => (await cdp.send('Runtime.evaluate', { expression, returnByValue: true })).result.value;
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4176/' });
-  for (let attempt = 0; attempt < 40 && !await read("Boolean(document.querySelector('.home-hero'))"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
 
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro'))"), true, 'la intro debe cubrir la portada al abrir');
-  assert.equal(await read("getComputedStyle(document.querySelector('.pizza-intro')).backgroundImage"), 'none', 'no debe mostrarse una mesa CSS antes del canvas Three.js');
-  for (let attempt = 0; attempt < 80 && !await read("document.querySelector('.pizza-intro__canvas')?.dataset.ready === 'true'"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro video'))"), false, 'la intro no debe contener ningún vídeo');
-  assert.equal(await read("document.querySelectorAll('.pizza-intro canvas').length"), 1, 'la intro debe usar un único canvas Three.js');
-  assert.equal(await read("document.querySelector('.pizza-intro__canvas')?.dataset.renderer"), 'three', 'el canvas debe pertenecer al renderizador Three.js');
-  assert.equal(await read("document.querySelector('.pizza-intro__canvas')?.dataset.ready"), 'true', 'la escena debe cargar todos sus recursos');
-  const introReadyAt = Date.now();
-  assert.equal(await read("document.querySelector('.pizza-intro__canvas')?.dataset.recipe"), 'tomate-mozzarella-pepperoni', 'la receta animada debe ser la pizza pepperoni');
-  assert.equal(await read("document.querySelector('.pizza-intro__canvas')?.dataset.pepperoniCount"), '5', 'la última capa debe contener exactamente cinco rodajas de pepperoni');
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro__particles, .pizza-intro__flour-veil'))"), false, 'no deben quedar capas de la intro de vídeo');
-  await read("(() => { window.__introOpacityMin = 1; window.__introPhaseOrder = []; const sample = () => { const stage = document.querySelector('.pizza-intro'); if (!stage) return; window.__introOpacityMin = Math.min(window.__introOpacityMin, Number(getComputedStyle(stage).opacity)); const phase = stage.querySelector('canvas')?.dataset.phase; if (phase && window.__introPhaseOrder.at(-1) !== phase) window.__introPhaseOrder.push(phase); requestAnimationFrame(sample); }; requestAnimationFrame(sample); return true; })()");
-  assert.equal(await read("document.querySelector('.site-frame')?.inert"), true, 'la web debe estar inerte durante la secuencia');
-  assert.equal(await read("getComputedStyle(document.body).overflow"), 'hidden', 'el desplazamiento debe estar bloqueado');
-  assert.equal(await read("getComputedStyle(document.documentElement).overflow"), 'hidden', 'el documento tampoco debe desplazarse');
+  const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const navigate = async (path = '/') => {
+    await read("document.documentElement.dataset.leaving = 'true'");
+    await cdp.send('Page.navigate', { url: `http://127.0.0.1:4176${path}` });
+    for (let i = 0; i < 60 && !await read("!document.documentElement.dataset.leaving && Boolean(document.querySelector('.site-frame'))"); i++) await wait(100);
+  };
+  const waitForEnd = async () => {
+    for (let i = 0; i < 100 && await read("Boolean(document.querySelector('.logo-intro'))"); i++) await wait(100);
+    assert.equal(await read("Boolean(document.querySelector('.logo-intro'))"), false);
+    assert.equal(await read("document.querySelector('.site-frame').inert"), false);
+    assert.notEqual(await read('getComputedStyle(document.body).overflow'), 'hidden');
+  };
 
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: 100, y: 100, button: 'left', clickCount: 1 });
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: 100, y: 100, button: 'left', clickCount: 1 });
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro'))"), true, 'un clic no debe saltar la intro');
-  await cdp.send('Input.synthesizeScrollGesture', { x: 200, y: 350, yDistance: -500, speed: 900 });
-  assert.equal(await read('window.scrollY'), 0, 'la rueda no debe desplazar la web durante la intro');
+  await navigate();
+  assert.equal(await read("Boolean(document.querySelector('.logo-intro'))"), true, 'el logo debe ser la entrada principal');
+  assert.equal(await read("document.querySelector('.site-frame').inert"), true);
+  assert.equal(await read('getComputedStyle(document.body).overflow'), 'hidden');
+  for (let i = 0; i < 60 && !await read("document.querySelectorAll('.logo-intro__piece').length === 11"); i++) await wait(50);
+  assert.equal(await read("document.querySelectorAll('.logo-intro__piece').length"), 11);
+  assert.equal(await read("Boolean(document.querySelector('.logo-intro canvas, .logo-intro video, .logo-demo'))"), false);
+  assert.equal(await read("getComputedStyle(document.querySelector('.logo-intro__whiteout')).backgroundColor"), 'rgb(255, 226, 160)');
+  const started = Date.now();
+  await read("document.querySelectorAll('.logo-intro, .logo-intro *').forEach(el => el.getAnimations().forEach(a => { a.pause(); a.currentTime = 3700; }))");
+  assert.equal(await read("getComputedStyle(document.querySelector('.logo-intro__whiteout')).opacity"), '1');
+  assert.equal(await read("getComputedStyle(document.querySelector('.logo-intro')).opacity"), '1');
+  await waitForEnd();
+  assert.ok(Date.now() - started >= 3900 && Date.now() - started < 6000, 'la secuencia debe durar unos 4,5 segundos');
+  assert.equal(await read("sessionStorage.getItem('pizzplass-logo-intro-seen')"), '1');
+  await navigate('/eventos.html');
+  assert.equal(await read("Boolean(document.querySelector('.logo-intro'))"), false, 'no se repite al navegar');
+  await navigate('/?intro=logo');
+  assert.equal(await read("Boolean(document.querySelector('.logo-intro, .logo-demo'))"), false, 'no queda el modo de prueba');
 
-  for (let attempt = 0; attempt < 140 && !await read("window.__introPhaseOrder.includes('flour')"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  assert.equal(await read("window.__introPhaseOrder.includes('pepperoni')"), true, 'el pepperoni debe ser la última capa de ingredientes');
-  assert.equal(await read("window.__introPhaseOrder.indexOf('pepperoni') < window.__introPhaseOrder.indexOf('flour')"), true, 'la harina debe comenzar después del pepperoni');
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro__canvas'))"), true, 'la escena Three.js debe seguir activa mientras se prepara la pizza');
-  for (let attempt = 0; attempt < 35 && !await read("document.querySelector('.pizza-intro')?.classList.contains('is-ending')"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  assert.equal(await read("document.querySelector('.pizza-intro')?.classList.contains('is-ending')"), true, 'la escena debe iniciar su dispersión original');
-  assert.equal(await read("document.querySelector('.site-frame')?.inert"), true, 'la web sigue bloqueada durante la dispersión');
-  for (let attempt = 0; attempt < 45 && await read("Boolean(document.querySelector('.pizza-intro'))"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro'))"), false, 'la intro debe terminar tras la secuencia original');
-  assert.ok(Date.now() - introReadyAt <= 6_900, 'la web debe quedar operativa en unos 6,5 segundos');
-  assert.ok(await read("window.__introOpacityMin < .9"), 'la dispersión debe revelar la web gradualmente');
-  assert.equal(await read("document.querySelector('.site-frame')?.inert"), false, 'la web debe quedar operativa');
-  assert.notEqual(await read("getComputedStyle(document.body).overflow"), 'hidden', 'se recupera el desplazamiento');
-  assert.notEqual(await read("getComputedStyle(document.documentElement).overflow"), 'hidden', 'se recupera el desplazamiento del documento');
-  assert.equal(await read("Boolean(document.querySelector('.home-hero .button[href=\"/contacto.html\"]'))"), true);
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+  await cdp.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  await read("sessionStorage.removeItem('pizzplass-logo-intro-seen')");
+  await navigate();
+  for (let i = 0; i < 60 && !await read("Boolean(document.querySelector('.logo-intro__piece'))"); i++) await wait(50);
+  assert.equal(await read("getComputedStyle(document.querySelector('.logo-intro__piece')).animationName"), 'logo-appear');
+  assert.equal(await read('document.documentElement.scrollWidth <= innerWidth'), true);
+  await waitForEnd();
 
-  await cdp.send('Network.enable');
-  await cdp.send('Network.setCacheDisabled', { cacheDisabled: true });
-  await cdp.send('Network.setBlockedURLs', { urls: ['*pizza-scene.js*'] });
-  await cdp.send('Runtime.evaluate', { expression: "sessionStorage.removeItem('pizzplass-intro-seen')" });
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4176/?fallback-test=1' });
-  for (let attempt = 0; attempt < 40 && !await read("Boolean(document.querySelector('.pizza-intro--fallback'))"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  await read("window.__fallbackObservedAt = performance.now()");
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro--fallback'))"), true, 'si Three.js falla debe mostrarse el respaldo 2D');
-  assert.equal(await read("document.querySelectorAll('.pizza-intro__fallback-pepperoni').length"), 5, 'el respaldo debe mostrar las cinco rodajas de pepperoni');
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro__fallback-ham, .pizza-intro__fallback-basil'))"), false, 'el respaldo no debe contener jamón ni albahaca');
-  assert.notEqual(await read("getComputedStyle(document.querySelector('.pizza-intro__fallback-base')).animationName"), 'none', 'la masa del respaldo debe entrar animada');
-  assert.notEqual(await read("getComputedStyle(document.querySelector('.pizza-intro__fallback-pepperoni')).animationName"), 'none', 'el pepperoni del respaldo debe entrar animado');
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro__fallback-flour'))"), true, 'el respaldo debe terminar con harina animada');
-  assert.equal(await read("getComputedStyle(document.querySelector('.pizza-intro__fallback-pepperoni')).opacity"), '0', 'el pepperoni no debe aparecer antes de su turno');
-  for (let attempt = 0; attempt < 90 && Number(await read("getComputedStyle(document.querySelector('.pizza-intro__fallback-pepperoni')).opacity")) < .5; attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  assert.ok(Number(await read("getComputedStyle(document.querySelector('.pizza-intro__fallback-pepperoni')).opacity")) >= .5, 'el pepperoni debe aparecer durante la secuencia 2D');
-  for (let attempt = 0; attempt < 140 && await read("Boolean(document.querySelector('.pizza-intro'))"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro'))"), false, 'el respaldo animado debe dejar paso a la web');
-  const fallbackElapsed = await read("performance.now() - window.__fallbackObservedAt");
-  assert.ok(fallbackElapsed >= 5_900, 'el respaldo no debe terminar antes de completar la secuencia');
-  assert.ok(fallbackElapsed <= 7_400, 'el respaldo debe dejar la web operativa en unos 6,5 segundos');
-  await cdp.send('Network.setBlockedURLs', { urls: [] });
-  await cdp.send('Network.setCacheDisabled', { cacheDisabled: false });
-
-  await cdp.send('Page.navigate', { url: 'http://127.0.0.1:4176/eventos.html' });
-  for (let attempt = 0; attempt < 30 && !await read("Boolean(document.querySelector('.events-gallery'))"); attempt += 1) {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-  assert.equal(await read("Boolean(document.querySelector('.pizza-intro'))"), false, 'no se repite al navegar en la misma pestaña');
+  await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: `HTMLCanvasElement.prototype.getContext = function () { return null; };` });
+  await read("sessionStorage.removeItem('pizzplass-logo-intro-seen')");
+  await navigate();
+  for (let i = 0; i < 60 && !await read("Boolean(document.querySelector('.logo-intro__original'))"); i++) await wait(50);
+  assert.equal(await read("Boolean(document.querySelector('.logo-intro__original'))"), true, 'si falla canvas se muestra el logo estático');
+  await waitForEnd();
 });

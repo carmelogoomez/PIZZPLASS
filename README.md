@@ -5,7 +5,7 @@ Web de PizzPlass, catering de pizza napolitana elaborada al momento para bodas, 
 ## Tecnología
 
 - React 19 + Vite 8.3.5.
-- La intro activa está en `src/PizzaIntro.jsx`, `src/pizza-scene.js` y `src/pizza-intro.css`, con sus imágenes en `assets/intro/`.
+- La intro activa está en `src/LogoIntro.jsx` y `src/logo-intro.css`; utiliza `assets/logo.png` y `assets/intro/mesa.webp`.
 - Una sola aplicación para portada, servicios, nosotros, colaboradores, blog, artículos y contacto.
 - Se conservan las URLs históricas terminadas en `.html` para no romper SEO ni enlaces existentes.
 - Formulario conectado con FormSubmit.
@@ -14,6 +14,8 @@ Web de PizzPlass, catering de pizza napolitana elaborada al momento para bodas, 
 ## Desarrollo local
 
 En Windows, haz doble clic en `abrir-web.cmd`. La web se abrirá en `http://127.0.0.1:4173/` mediante el servidor local incluido.
+
+La entrada ensambla el logo durante 4,5 segundos y se muestra una vez por pestaña. El nombre y el lema usan amarillo masa sobre madera oscurecida. La explosión comienza 0,6 segundos después de completarse las letras, cubre toda la pantalla en tono masa y se disipa para revelar la web. Respeta movimiento reducido y libera la página si falla la carga de la imagen.
 
 Para desarrollar con recarga automática:
 
